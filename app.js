@@ -135,7 +135,7 @@ function save(opts = {}) {
   try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch (e) { console.warn(e); }
   if (!opts.silent) render();
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => { if (window.Cloud) Cloud.push(); }, 1200);
+  saveTimer = setTimeout(() => { Cloud.push(); }, 1200);
 }
 function saveLocalOnly() { try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch { } }
 
@@ -878,7 +878,7 @@ function vInsights() {
 
 // ============ SETTINGS ============
 function vSettings() {
-  const st = S.settings, cloud = window.Cloud ? Cloud.status() : { state: 'off' };
+  const st = S.settings, cloud = Cloud.status();
   const evCount = buildEvents().filter(e => e.at > Date.now()).length;
   const cloudTxt = {
     off: 'Not set up. Your data is saved on this device only.',
@@ -1463,7 +1463,7 @@ async function localNotify(title, body, force) {
 // If push isn't set up, fire due reminders while the app is open.
 const shownLocal = new Set(JSON.parse(localStorage.getItem('bloom_shown') || '[]'));
 function localReminderCheck() {
-  if (window.Cloud && Cloud.status().push) return; // the push sender handles it
+  if (Cloud.status().push) return; // the push sender handles it
   const now = Date.now();
   for (const e of buildEvents()) {
     if (e.at <= now && e.at > now - 10 * 60000 && !shownLocal.has(e.id)) { shownLocal.add(e.id); localNotify(e.title, e.body); }
