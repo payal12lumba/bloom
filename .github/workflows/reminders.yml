@@ -2,12 +2,11 @@ name: Send Bloom reminders
 
 on:
   schedule:
-    - cron: '*/15 * * * *'   # every 15 minutes (GitHub may run it a few minutes late)
-  workflow_dispatch:          # lets you run it by hand from the Actions tab
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
 
 permissions:
   contents: read
-  actions: write              # used by the keep-alive step below
 
 jobs:
   notify:
@@ -22,6 +21,3 @@ jobs:
       - run: node scripts/notify.mjs
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-      # GitHub pauses scheduled jobs after 60 days without commits. This keeps it running.
-      - uses: liskin/gh-workflow-keepalive@v1
-
