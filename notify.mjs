@@ -1,0 +1,61 @@
+// Bloom reminder sender — run by GitHub Actions every 15 minutes (free).
+// Reads each person's upcoming reminders from Firestore and sends the due ones
+// as push notifications through Firebase Cloud Messaging.
+import admin from 'firebase-admin';
+
+const raw = process.env.FIREBASE_SERVICE_ACCOUNT || '';
+if (!raw.trim()) fail('The FIREBASE_SERVICE_ACCOUNT secret is missing. Add it in repo Settings → Secrets and variables → Actions.');
+let sa;
+try { sa = JSON.parse(raw); } catch { fail('FIREBASE_SERVICE_ACCOUNT is not valid JSON. Open the downloaded .json file in Notepad, copy ALL of it, and paste it as the secret again.'); }
+if (!sa.project_id || !sa.private_key) fail('FIREBASE_SERVICE_ACCOUNT does not look like a service-account key (missing project_id or private_key).');
+
+admin.initializeApp({ credential: admin.credential.cert(sa) });
+const db = admin.firestore();
+const fcm = admin.messaging();
+
+const now = Date.now();
+const LOOKBACK = 75 * 60 * 1000;   // GitHub's timer can run late; still send if under 75 min late
+const LOOKAHEAD = 2 * 60 * 1000;
+const DEAD_TOKEN = new Set(['messaging/registration-token-not-registered', 'messaging/invalid-registration-token']);
+
+let users;
+try { users = await db.collection('push').get(); }
+catch (e) { fail(`Could not read Firestore (${e.code || e.message}). Check that the database exists in project "${sa.project_id}".`); }
+
+let sentCount = 0;
+for (const docSnap of users.docs) {
+  try {
+    const { tokens = [], events = [], sent = [] } = docSnap.data();
+    const done = new Set(sent);
+    let due = events.filter(e => e.at <= now + LOOKAHEAD && e.at > now - LOOKBACK && !done.has(e.id));
+    const update = { lastRun: now };
+
+    if (due.length && tokens.length) {
+      // If many are due at once (e.g. after a delay), bundle the extras into one summary
+      const extra = due.length > 4 ? due.slice(3) : [];
+      if (extra.length) due = due.slice(0, 3);
+      const messages = due.map(e => ({ title: e.title, body: e.body || '', tag: e.id }));
+      if (extra.length) messages.push({ title: `🌸 ${extra.length} more reminders`, body: extra.map(e => e.title).join(' · ').slice(0, 180), tag: 'bundle-' + now });
+
+      const bad = new Set();
+      for (const m of messages) {
+        for (const token of tokens) {
+          try {
+            await fcm.send({ token, data: { title: m.title, body: m.body, tag: String(m.tag).slice(0, 60) }, webpush: { headers: { Urgency: 'high', TTL: '3600' } } });
+            sentCount++;
+          } catch (err) {
+            if (DEAD_TOKEN.has(err.code)) bad.add(token); else console.warn('send failed:', err.code || err.message);
+          }
+        }
+      }
+      [...due, ...extra].forEach(e => done.add(e.id));
+      const live = new Set(events.map(e => e.id));
+      update.sent = [...done].filter(id => live.has(id)).slice(-600);
+      if (bad.size) update.tokens = tokens.filter(t => !bad.has(t));
+    }
+    await docSnap.ref.update(update);   // lastRun lets the app show "reminder sender is running"
+  } catch (e) { console.warn('user', docSnap.id, 'skipped:', e.code || e.message); }
+}
+console.log(`OK — checked ${users.size} user(s), sent ${sentCount} notification(s).`);
+
+function fail(msg) { console.error('❌ ' + msg); process.exit(1); }
