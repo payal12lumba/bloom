@@ -1,4 +1,4 @@
-# 🌸 Bloom — your life planner
+# 🪷 Sankalpa — goals, routine & sadhana
 
 Tasks with deadlines and rewards, goals (year → day), daily habits, water, sleep, exercise, meals, mood, weight, cycle tracking, a study timetable with Excel import/export, to-do lists, a YouTube + Instagram content pipeline, a startup ideas board, a bucket list, savings goals, people to keep in touch with, badges, levels and push reminders.
 
@@ -16,6 +16,7 @@ The app works as soon as step 2 is done (data saved on that device only). Steps 
 | `sw.js`, `manifest.json`, `icon-*.png` | Make it installable on your phone, work offline, and show notifications |
 | `.github/workflows/reminders.yml` | The free 15-minute reminder timer |
 | `scripts/notify.mjs` | Sends the reminders that are due |
+| `config.js` | Your Firebase settings (one place for all devices) |
 | `firestore.rules` | Security rules so only you can see your data |
 
 ---
@@ -52,13 +53,14 @@ The app works as soon as step 2 is done (data saved on that device only). Steps 
 3. Value: open the downloaded `.json` file in Notepad, copy **everything**, paste it → **Add secret**.
 4. Then delete the `.json` file from your Downloads.
 
-## Step 5 — Connect the app (2 min)
+## Step 5 — Put your Firebase settings in config.js (2 min)
 
-1. Open your app → **More → Settings → Sync across devices → Connect Firebase**.
-2. Paste the config block from step 3.2 and the Web Push key from step 3.5 → **Save and reload**.
-3. Tap **Sign in with Google**.
-4. Under **Notifications**, tap **Turn on for this device** and allow.
-5. Do steps 3–4 on every device you use (phone, laptop). Your data follows your Google account.
+1. On GitHub, open `config.js` → click the ✏️ pencil to edit.
+2. Replace the `PASTE_…` values with the ones from your Firebase config (apiKey, messagingSenderId, appId), and put your Web Push key in `vapid`.
+3. **Commit changes.** Now every device (laptop, phone, APK) connects automatically, with no pasting per device.
+4. Open the app → **Sign in with Google** → Settings → **Turn on for this device** under Notifications.
+
+Anyone who opens the link sees only a sign-in screen. Each Google account gets its own private, empty planner.
 
 ## Step 6 — Install it on your phone
 

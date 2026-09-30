@@ -3,29 +3,33 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#F4F2FA">
+<meta name="theme-color" content="#EFD8E5">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Bloom">
-<title>Bloom</title>
+<meta name="apple-mobile-web-app-title" content="Sankalpa">
+<title>Sankalpa</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Nunito:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Cormorant+Garamond:ital,wght@1,500&family=Nunito:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<div id="decor" aria-hidden="true"></div>
 <div class="app">
   <nav id="sidenav" aria-label="Main"></nav>
   <main id="main"></main>
 </div>
 <nav id="bottomnav" aria-label="Main"></nav>
+<button id="fab" data-a="fab" aria-label="Quick add">＋</button>
 <div id="modal" hidden></div>
 <div id="toasts" aria-live="polite"></div>
 <input type="file" id="xlsxIn" accept=".xlsx,.xls,.csv" hidden>
+<input type="file" id="contentIn" accept=".xlsx,.xls,.csv" hidden>
 <input type="file" id="jsonIn" accept=".json,application/json" hidden>
+<script src="config.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

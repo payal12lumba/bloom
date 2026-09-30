@@ -1,6 +1,6 @@
 /* Bloom service worker: offline support + push notifications */
-const CACHE = 'bloom-v1';
-const ASSETS = ['./', './index.html', './styles.css', './app.js', './manifest.json', './icon-192.png', './icon-512.png'];
+const CACHE = 'sankalpa-v5';
+const ASSETS = ['./', './index.html', './styles.css', './app.js', './config.js', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
@@ -13,7 +13,7 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
   e.respondWith(
-    fetch(req).then(res => { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); return res; })
+    fetch(req, { cache: 'no-cache' }).then(res => { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); return res; })
       .catch(() => caches.match(req).then(r => r || caches.match('./index.html')))
   );
 });
@@ -21,9 +21,9 @@ self.addEventListener('fetch', e => {
 // Push messages sent by the GitHub Action (via Firebase Cloud Messaging)
 self.addEventListener('push', e => {
   let p = {};
-  try { p = e.data ? e.data.json() : {}; } catch { p = { data: { title: 'Bloom', body: e.data && e.data.text() } }; }
+  try { p = e.data ? e.data.json() : {}; } catch { p = { data: { title: 'Sankalpa', body: e.data && e.data.text() } }; }
   const d = p.data || p.notification || p;
-  e.waitUntil(self.registration.showNotification(d.title || 'Bloom', {
+  e.waitUntil(self.registration.showNotification(d.title || 'Sankalpa', {
     body: d.body || '', icon: 'icon-192.png', badge: 'icon-192.png', tag: d.tag || undefined, data: { url: './' },
   }));
 });
