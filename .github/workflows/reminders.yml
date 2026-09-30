@@ -1,4 +1,4 @@
-name: Send Bloom reminders
+name: Send Sankalpa reminders
 
 on:
   schedule:
@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: reminders
+  cancel-in-progress: true
+
 jobs:
   notify:
     runs-on: ubuntu-latest
@@ -16,8 +20,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-      - run: npm install firebase-admin@12 --no-save --no-audit --no-fund --silent
+          node-version: 22
+      - run: npm install firebase-admin@12 --no-save --no-audit --no-fund --loglevel=error
       - run: node scripts/notify.mjs
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
