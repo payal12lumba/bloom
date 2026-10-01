@@ -1,94 +1,64 @@
 # 🪷 Sankalpa — goals, routine & sadhana
 
-Tasks with deadlines and rewards, goals (year → day), daily habits, water, sleep, exercise, meals, mood, weight, cycle tracking, a study timetable with Excel import/export, to-do lists, a YouTube + Instagram content pipeline, a startup ideas board, a bucket list, savings goals, people to keep in touch with, badges, levels and push reminders.
+A private, installable life planner: focus goals and weekly priorities, tasks and a drag-and-drop day planner, study timetables, Excel-style **Sheets**, content planning per platform, money (income, expenses, budgets, savings), My Spaces (sadhana, self-care, hobbies), health and cycle tracking, festivals & vrat, weekly review, rewards, streaks and push reminders.
 
-Everything runs on free services: **GitHub Pages** hosts the app, **Firebase** syncs your data and sends notifications, and **GitHub Actions** checks your reminders every 15 minutes.
+Everyone signs in with **Google or email**. Each account gets its own fresh, private planner. Nobody can see anyone else's data.
 
-The app works as soon as step 2 is done (data saved on that device only). Steps 3–6 add sync across devices and push reminders.
+**Everything is free:** GitHub Pages (hosting), GitHub Actions (reminder timer), Firebase Spark plan (sign-in, database, push). Keep this repository **Public** — Actions minutes are unlimited for public repos.
 
 ---
 
-## What's in this folder
+## What's in this repository
 
-| File | What it does |
+| File | Purpose |
 |---|---|
-| `index.html`, `styles.css`, `app.js` | The app itself |
-| `sw.js`, `manifest.json`, `icon-*.png` | Make it installable on your phone, work offline, and show notifications |
-| `.github/workflows/reminders.yml` | The free 15-minute reminder timer |
-| `scripts/notify.mjs` | Sends the reminders that are due |
-| `config.js` | Your Firebase settings (one place for all devices) |
-| `firestore.rules` | Security rules so only you can see your data |
+| `index.html`, `styles.css`, `app.js` | The app |
+| `config.js` | Your Firebase settings (fill in once) |
+| `sw.js`, `manifest.json`, `icon-*.png` | Installable app, offline support, notifications |
+| `.github/workflows/reminders.yml` | Sends due reminders every 15 minutes (the sender script is inside this file) |
+| `firestore.rules` | Security rules — each person can only read their own data |
 
 ---
 
-## Step 1 — Put the files on GitHub (5 min)
+## 1. Put it on GitHub
+1. Create a **Public** repository (e.g. `bloom` or `sankalpa`).
+2. **Add file → Upload files** → drag in everything from this folder **except `.github`** → Commit.
+3. **Add file → Create new file** → name it `.github/workflows/reminders.yml` → paste the contents of that file → Commit.
+4. **Settings → Pages** → Deploy from a branch → `main` / `(root)` → Save. Your app is at `https://YOUR-USERNAME.github.io/REPO-NAME/`.
 
-1. Sign in at github.com → **New repository** → name it `bloom` → choose **Public** → Create.
-   (Public is needed for free GitHub Pages and unlimited free Action minutes. Only the code is public; your data lives in Firebase, locked to your Google account.)
-2. Click **uploading an existing file** and drag in everything from this folder **except the `.github` folder** → **Commit changes**.
-3. The `.github` folder is often hidden by computers, so create it by hand: **Add file → Create new file**, type the name `.github/workflows/reminders.yml` (the slashes create the folders), paste the contents of `reminders.yml`, and commit.
+## 2. Firebase (one time)
+In console.firebase.google.com → your project:
+1. **Add a web app** (`</>` icon) and keep the `firebaseConfig` values.
+2. **Authentication → Sign-in method:** enable **Google** and **Email/Password**.
+3. **Authentication → Settings → Authorized domains:** add `YOUR-USERNAME.github.io`.
+4. **Firestore Database → Create database** (Standard, production mode). **Rules** tab → paste `firestore.rules` → **Publish**.
+5. **Project settings → Cloud Messaging → Web Push certificates → Generate key pair** (this is the VAPID key).
+6. **Project settings → Service accounts → Generate new private key** → a `.json` file downloads (keep it private).
 
-## Step 2 — Turn on GitHub Pages (2 min)
+## 3. Fill in `config.js`
+Edit `config.js` on GitHub and replace every `PASTE_…` value (apiKey, appId, VAPID key; check projectId, authDomain, messagingSenderId). Commit. Every device then connects automatically.
 
-1. In the repo: **Settings → Pages**.
-2. Source: **Deploy from a branch** → Branch: **main**, folder **/ (root)** → Save.
-3. After a minute your app is live at `https://YOUR-USERNAME.github.io/bloom/`. Open it — it already works.
+> GitHub may email "secret detected" for the apiKey. That's expected — Firebase web keys are public by design. Optional: in Google Cloud Console → APIs & Services → Credentials, restrict the browser key to `YOUR-USERNAME.github.io/*` and `YOUR-PROJECT.firebaseapp.com/*`.
 
-## Step 3 — Create your Firebase project (10 min)
+## 4. Reminder sender
+1. Repo **Settings → Secrets and variables → Actions → New repository secret**: name `FIREBASE_SERVICE_ACCOUNT`, value = the entire service-account `.json` file. Then delete the file from your computer.
+2. **Actions → Send Sankalpa reminders → Run workflow.** A green ✓ means it works. In the app, **Settings** shows "✅ Reminder sender is running".
+3. Don't want Actions emails? github.com/settings/notifications → Actions → untick Email.
 
-1. Go to console.firebase.google.com → **Create a project** → name it `bloom` → you can turn **off** Google Analytics → Create.
-2. **Add a web app:** on the project home click the **`</>`** icon → nickname `bloom` → Register. Firebase shows a `firebaseConfig = { … }` block. **Copy the part from `{` to `}`** and keep it somewhere for step 5.
-3. **Sign-in:** Build → **Authentication** → Get started → **Google** → Enable → pick your email → Save.
-   Then Authentication → **Settings** → **Authorized domains** → Add domain → `YOUR-USERNAME.github.io`.
-4. **Database:** Build → **Firestore Database** → Create database → location **asia-south1 (Mumbai)** → start in **production mode**.
-   Open the **Rules** tab, replace everything with the contents of `firestore.rules`, and click **Publish**.
-5. **Push key:** ⚙️ Project settings → **Cloud Messaging** tab → scroll to **Web Push certificates** → **Generate key pair**. Copy the long key for step 5.
-6. **Key for the reminder sender:** ⚙️ Project settings → **Service accounts** → **Generate new private key** → a `.json` file downloads.
-   ⚠️ Never upload this file to GitHub. It only goes into the secret in step 4.
+## 5. Install on Android
+**From Chrome:** open the app link in Chrome → ⋮ → **Add to home screen → Install**.
 
-## Step 4 — Give GitHub the reminder key (2 min)
+**As an APK:** pwabuilder.com → paste the app link → **Package for stores → Android** → in *All settings* set the package ID (e.g. `com.yourname.sankalpa`), keep **Notification delegation** enabled → Generate. Keep `signing.keystore` and `signing-key-info.txt` safe (needed for future APK updates). Share the `.apk` via Google Drive.
 
-1. In your GitHub repo: **Settings → Secrets and variables → Actions → New repository secret**.
-2. Name: `FIREBASE_SERVICE_ACCOUNT`
-3. Value: open the downloaded `.json` file in Notepad, copy **everything**, paste it → **Add secret**.
-4. Then delete the `.json` file from your Downloads.
+**Hide the address bar in the APK:** create a public repo named exactly `YOUR-USERNAME.github.io`, add `.well-known/assetlinks.json` (from the PWABuilder zip) and an empty `.nojekyll` file, enable Pages, then clear the app's storage once.
 
-## Step 5 — Put your Firebase settings in config.js (2 min)
+## 6. Notifications blocked on Android?
+Allow in all three places, then reopen the app → **Settings → Notifications → Turn on for this device → Send a test**:
+1. Phone **Settings → Apps → Sankalpa → Notifications → On** (and every category).
+2. Phone **Settings → Apps → Chrome → Notifications → On**.
+3. **Chrome → ⋮ → Settings → Site settings → Notifications** → your site under *Blocked* → **Allow** (turn off "quieter messaging").
 
-1. On GitHub, open `config.js` → click the ✏️ pencil to edit.
-2. Replace the `PASTE_…` values with the ones from your Firebase config (apiKey, messagingSenderId, appId), and put your Web Push key in `vapid`.
-3. **Commit changes.** Now every device (laptop, phone, APK) connects automatically, with no pasting per device.
-4. Open the app → **Sign in with Google** → Settings → **Turn on for this device** under Notifications.
+Also set **Battery → Unrestricted** for Sankalpa and Chrome.
 
-Anyone who opens the link sees only a sign-in screen. Each Google account gets its own private, empty planner.
-
-## Step 6 — Install it on your phone
-
-- **Android (Chrome):** open the app link → ⋮ menu → **Add to Home screen / Install app**.
-- **iPhone (Safari):** open the link → Share → **Add to Home Screen**. Open Bloom from the home screen icon, then turn on notifications in Settings (iPhone only allows notifications for home-screen apps).
-
-## Test the reminders
-
-1. Create a task with an **Extra reminder at a set time** about 20 minutes from now.
-2. Or run it right away: GitHub repo → **Actions** tab → **Send Bloom reminders** → **Run workflow**. The log should say `sent 1 notification(s)` when something is due.
-
----
-
-## Good to know
-
-- **Reminder timing:** GitHub runs the checker every 15 minutes, sometimes a few minutes late. Good for deadlines and water breaks; not for exact alarms.
-- **Rolling 30-day window:** routine and water reminders are planned 30 days ahead each time you open the app. Open Bloom at least once a month and they keep going.
-- **Reward timer:** the "5 minutes left" alert for Instagram/YouTube time works while Bloom is open. If you close it, the time used is still counted when you come back.
-- **Updating the app:** edit a file on GitHub and commit. Your phone gets the new version the next time it opens the app online.
-- **Backups:** Settings → **Download backup** saves everything as a file. **Restore backup** brings it back.
-- **Free limits:** Firebase's free plan allows 50,000 reads and 20,000 writes a day, and push messages are free. A single person's planner uses a small fraction of that.
-
-## If something goes wrong
-
-| Problem | Fix |
-|---|---|
-| Sign-in popup closes with an error | Check step 3.3: `YOUR-USERNAME.github.io` must be in Authorized domains. |
-| "Missing or insufficient permissions" | The Firestore rules from step 3.4 weren't published. |
-| Action log says `Missing FIREBASE_SERVICE_ACCOUNT secret` | Redo step 4; the secret name must match exactly. |
-| Action runs but no notification arrives | Open Bloom on that device → Settings → **Turn on for this device** again. If the log mentions the FCM API, open console.cloud.google.com for your project and enable **Firebase Cloud Messaging API**. |
-| No reminders on iPhone | Bloom must be opened from the home-screen icon (iOS 16.4 or newer). |
+## Updating
+Upload changed files to GitHub. Everyone's app (web, installed, APK) updates on its next open — no reinstall. Only a new app **name, icon or package ID** needs a new APK (signed with the same key). Never overwrite your filled-in `config.js` with the blank template.

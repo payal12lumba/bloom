@@ -1,8 +1,149 @@
+/* Part 0: Sankalpa icon set — rounded, filled, drawn for this app (24×24).
+   White details use fill="#fff". iconize() swaps emojis in rendered HTML for these icons. */
+'use strict';
+const W = 'fill="#fff"';
+const ST = (w = 2.6) => `fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"`;
+const face = mouth => `<circle cx="12" cy="12" r="10"/><circle cx="8.6" cy="10" r="1.4" ${W}/><circle cx="15.4" cy="10" r="1.4" ${W}/><path d="${mouth}" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>`;
+const ICONS = {
+  lotus: `<path d="M12 3c2.6 2.7 2.6 7.6 0 10.6C9.4 10.6 9.4 5.7 12 3z"/><path d="M12 14.2c-3.4-.3-7.2-2.6-8.4-7 3.6.1 6.6 2.2 8.4 5.4z"/><path d="M12 14.2c3.4-.3 7.2-2.6 8.4-7-3.6.1-6.6 2.2-8.4 5.4z"/><path d="M3 16.5c2.8 2.2 5.9 3.2 9 3.2s6.2-1 9-3.2c-.4 2.6-4.3 4.7-9 4.7s-8.6-2.1-9-4.7z"/>`,
+  check: `<circle cx="12" cy="12" r="10"/><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>`,
+  target: `<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6.2" ${W}/><circle cx="12" cy="12" r="3.4"/>`,
+  alert: `<path d="M10.3 3.6a2 2 0 0 1 3.4 0l8 13.9A2 2 0 0 1 20 20.5H4a2 2 0 0 1-1.7-3z"/><rect x="11" y="8.5" width="2" height="6" rx="1" ${W}/><circle cx="12" cy="17.3" r="1.2" ${W}/>`,
+  coin: `<circle cx="12" cy="12" r="10"/><path d="M8.5 7.5h7M8.5 10.5h7M10 7.5c3.4 0 3.4 4.3 0 4.3h-1l5 5" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>`,
+  sparkle: `<path d="M11 2.5c.6 4.6 2.9 6.9 7.5 7.5-4.6.6-6.9 2.9-7.5 7.5-.6-4.6-2.9-6.9-7.5-7.5 4.6-.6 6.9-2.9 7.5-7.5z"/><path d="M18.5 14.5c.3 2 1.2 3 3 3.3-1.8.3-2.7 1.2-3 3.2-.3-2-1.2-2.9-3-3.2 1.8-.3 2.7-1.3 3-3.3z"/>`,
+  calendar: `<rect x="3" y="4.5" width="18" height="17" rx="4"/><rect x="7" y="2" width="2.4" height="5" rx="1.2"/><rect x="14.6" y="2" width="2.4" height="5" rx="1.2"/><rect x="5.5" y="9.5" width="13" height="9.5" rx="2" ${W}/><circle cx="9" cy="13" r="1.2"/><circle cx="12" cy="13" r="1.2"/><circle cx="15" cy="13" r="1.2"/><circle cx="9" cy="16.2" r="1.2"/><circle cx="12" cy="16.2" r="1.2"/>`,
+  clapper: `<rect x="2.5" y="8" width="19" height="13" rx="3.5"/><path d="M3.2 4.8l15.6-2.3a1.6 1.6 0 0 1 1.8 1.4l.2 1.3L3.6 7.6z"/><path d="M10 11.5v6l5-3z" ${W}/>`,
+  pencil: `<path d="M15.2 4.3l4.5 4.5L9 19.5l-5.6 1.1L4.5 15z"/><path d="M16.6 2.9a2.2 2.2 0 0 1 3.1 0l1.4 1.4a2.2 2.2 0 0 1 0 3.1l-.9.9-4.5-4.5z"/>`,
+  book: `<path d="M3 5.2C3 4 4 3 5.2 3H10c1.2 0 2 .8 2 2v16c0-1-.8-2-2-2H5a2 2 0 0 1-2-2z"/><path d="M21 5.2C21 4 20 3 18.8 3H14c-1.2 0-2 .8-2 2v16c0-1 .8-2 2-2h5a2 2 0 0 0 2-2z" opacity=".72"/>`,
+  drop: `<path d="M12 2.5c3.6 4.4 7 8.3 7 12A7 7 0 0 1 5 14.5c0-3.7 3.4-7.6 7-12z"/><path d="M9 14.5a3 3 0 0 0 3 3" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>`,
+  x: `<path d="M6.5 6.5l11 11M17.5 6.5l-11 11" ${ST(3)}/>`,
+  arrow: `<path d="M4 12h14M13 6l6 6-6 6" ${ST(2.8)}/>`,
+  left: `<path d="M15 5l-7 7 7 7" ${ST(3)}/>`, right: `<path d="M9 5l7 7-7 7" ${ST(3)}/>`, down: `<path d="M5 9l7 7 7-7" ${ST(3)}/>`, up: `<path d="M5 15l7-7 7 7" ${ST(3)}/>`,
+  plus: `<path d="M12 5v14M5 12h14" ${ST(3.2)}/>`,
+  blossom: `${[0, 72, 144, 216, 288].map(a => `<circle cx="12" cy="6.6" r="4.4" transform="rotate(${a} 12 12)"/>`).join('')}<circle cx="12" cy="12" r="2.8" ${W}/>`,
+  diya: `<path d="M2.5 13.5h19c-.6 4.3-4.6 7-9.5 7s-8.9-2.7-9.5-7z"/><path d="M12 2.5c2.3 2.8 3.2 4.6 3.2 6.1A3.2 3.2 0 0 1 12 11.8a3.2 3.2 0 0 1-3.2-3.2c0-1.5.9-3.3 3.2-6.1z"/>`,
+  hourglass: `<path d="M6 2.5h12a1 1 0 0 1 1 1c0 3.6-2.4 6.4-4.6 8.5 2.2 2.1 4.6 4.9 4.6 8.5a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1c0-3.6 2.4-6.4 4.6-8.5C7.4 9.9 5 7.1 5 3.5a1 1 0 0 1 1-1z"/><path d="M8.5 19h7c-.5-1.9-2-3.2-3.5-4.3-1.5 1.1-3 2.4-3.5 4.3z" ${W} fill-opacity=".85"/>`,
+  link: `<g ${ST(3)}><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></g>`,
+  gear: `${[0, 45, 90, 135, 180, 225, 270, 315].map(a => `<rect x="10.2" y="1.6" width="3.6" height="5" rx="1.5" transform="rotate(${a} 12 12)"/>`).join('')}<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="3" ${W}/>`,
+  moon: `<path d="M20.5 14.6A8.6 8.6 0 0 1 9.4 3.5a8.6 8.6 0 1 0 11.1 11.1z"/><path d="M17 3.5l.6 1.5 1.5.6-1.5.6-.6 1.5-.6-1.5-1.5-.6 1.5-.6z"/>`,
+  cart: `<path d="M3 3h2.2a1.5 1.5 0 0 1 1.5 1.2L7 6h13.2a1 1 0 0 1 1 1.3l-1.9 6.6a2 2 0 0 1-1.9 1.4H8.7L9 17h9.5a1 1 0 1 1 0 2H8.2a1.5 1.5 0 0 1-1.5-1.2L4.4 5H3a1 1 0 0 1 0-2z"/><circle cx="9" cy="21" r="1.6"/><circle cx="17.5" cy="21" r="1.6"/>`,
+  note: `<rect x="4" y="2.5" width="16" height="19" rx="4"/><rect x="7.5" y="7" width="9" height="2" rx="1" ${W}/><rect x="7.5" y="11" width="9" height="2" rx="1" ${W}/><rect x="7.5" y="15" width="5.5" height="2" rx="1" ${W}/>`,
+  seedling: `<path d="M11.2 13.6C11 9.4 8 6.3 3.2 6.2c.1 4.6 3.3 7.5 8 7.4z"/><path d="M12.6 11.4c.3-4.4 3.4-7.6 8.2-7.6-.1 4.8-3.3 7.8-8.2 7.6z"/><rect x="10.9" y="10" width="2.2" height="11.5" rx="1.1"/>`,
+  leaf: `<path d="M20.5 3.5C11 3.5 4.5 8 4.5 15.5c0 1.2.2 2.4.6 3.5 1.3-3.8 4.3-7 8.4-8.9-3.4 2.4-5.8 5.7-6.7 9.4 1 .3 2.1.5 3.2.5 7.5 0 10.5-7 10.5-16z"/>`,
+  tree: `<circle cx="12" cy="9" r="7"/><circle cx="8" cy="12" r="4"/><circle cx="16" cy="12" r="4"/><rect x="10.8" y="13" width="2.4" height="9" rx="1.2"/>`,
+  bulb: `<path d="M12 2a7 7 0 0 0-4.2 12.6c.7.5 1.2 1.4 1.2 2.3V18h6v-1.1c0-.9.5-1.8 1.2-2.3A7 7 0 0 0 12 2z"/><rect x="9" y="19.2" width="6" height="2.8" rx="1.4"/>`,
+  bell: `<path d="M12 2.5a6.5 6.5 0 0 0-6.5 6.5v3.6L3.8 16a1 1 0 0 0 .9 1.5h14.6a1 1 0 0 0 .9-1.5l-1.7-3.4V9A6.5 6.5 0 0 0 12 2.5z"/><path d="M9.2 19a2.8 2.8 0 0 0 5.6 0z"/>`,
+  dumbbell: `<rect x="1.5" y="9" width="3" height="6" rx="1.5"/><rect x="4" y="6.5" width="4" height="11" rx="2"/><rect x="16" y="6.5" width="4" height="11" rx="2"/><rect x="19.5" y="9" width="3" height="6" rx="1.5"/><rect x="7.5" y="10.8" width="9" height="2.4" rx="1.2"/>`,
+  tulip: `<path d="M6 4l3 2.5L12 3l3 3.5L18 4v5a6 6 0 0 1-12 0z"/><rect x="11" y="13" width="2" height="9" rx="1"/><path d="M12 19c-1.5-2.6-4-3.6-6.5-3.4.6 2.6 3 4 6.5 3.4zM12 19c1.5-2.6 4-3.6 6.5-3.4-.6 2.6-3 4-6.5 3.4z"/>`,
+  star: `<path d="M12 2.6l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17l-5.7 3.1 1.2-6.4L2.8 9.3l6.4-.8z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>`,
+  starO: `<path d="M12 3.6l2.5 5.3 5.8.7-4.3 4 1.1 5.8L12 16.6l-5.1 2.8 1.1-5.8-4.3-4 5.8-.7z" ${ST(2)}/>`,
+  sun: `<circle cx="12" cy="12" r="5"/>${[0, 45, 90, 135, 180, 225, 270, 315].map(a => `<rect x="11" y="1" width="2" height="4" rx="1" transform="rotate(${a} 12 12)"/>`).join('')}`,
+  rainbow: `<path d="M2.5 18.5a9.5 9.5 0 0 1 19 0h-3.5a6 6 0 0 0-12 0z"/><path d="M8.5 18.5a3.5 3.5 0 0 1 7 0z" opacity=".55"/>`,
+  namaste: `<path d="M11.4 3.5c-.9 0-1.6.7-1.6 1.6l-.4 7.7-3.6 3.6a2 2 0 0 0 0 2.8l1.4 1.4a2 2 0 0 0 2.8 0l2.3-2.4V4.4c0-.5-.4-.9-.9-.9z"/><path d="M12.6 3.5c.9 0 1.6.7 1.6 1.6l.4 7.7 3.6 3.6a2 2 0 0 1 0 2.8l-1.4 1.4a2 2 0 0 1-2.8 0l-2.3-2.4V4.4c0-.5.4-.9.9-.9z" opacity=".75"/>`,
+  pin: `<path d="M9 2.5h6a1 1 0 0 1 .8 1.6L14.5 6v4.5l3.2 3a1 1 0 0 1-.7 1.7H7a1 1 0 0 1-.7-1.7l3.2-3V6L8.2 4.1A1 1 0 0 1 9 2.5z"/><rect x="11" y="15" width="2" height="7" rx="1"/>`,
+  rocket: `<path d="M14.5 2.8c3.4-.8 6-.3 6.7.3.6.7 1.1 3.3.3 6.7-.8 3.2-3.2 6.3-6.8 8.6l-.6 3.1-3.5-2.4-4.6-4.6-2.4-3.5 3.1-.6c2.3-3.6 5.4-6 8.8-6.6z"/><circle cx="15.5" cy="8.5" r="2" ${W}/><path d="M5.5 15.3c-1.6.6-2.5 2.2-2.8 5.5 3.3-.3 4.9-1.2 5.5-2.8z"/>`,
+  cap: `<path d="M12 3.5l10.5 5-10.5 5-10.5-5z"/><path d="M6 11.5v4c0 1.9 2.7 3.5 6 3.5s6-1.6 6-3.5v-4l-6 2.8z"/><rect x="20" y="9" width="1.8" height="7" rx=".9"/>`,
+  globe: `<circle cx="12" cy="12" r="10"/><path d="M2.5 12h19M12 2.2c2.6 2.8 3.8 6 3.8 9.8s-1.2 7-3.8 9.8c-2.6-2.8-3.8-6-3.8-9.8S9.4 5 12 2.2z" fill="none" stroke="#fff" stroke-width="1.6"/>`,
+  fire: `<path d="M12 2.5c.8 3.4 5.5 5.6 5.5 11a5.5 5.5 0 0 1-11 0c0-2.4 1.2-4 2.6-5.2.3 1.6 1 2.6 2.1 3.1-.4-3.5.2-6.4.8-8.9z"/>`,
+  piggy: `<path d="M4.5 11.5a7.5 6.5 0 0 1 12.6-4.3l2.6-1.3-.6 3.4a6 6 0 0 1 .9 2.2l1.5.4v3.2l-2 .6a7 7 0 0 1-2.5 2.7V21h-3v-1.6a9 9 0 0 1-3 0V21H8v-2.4a6.5 6.5 0 0 1-3.5-4.5L2.5 13.5V11z"/><circle cx="15.5" cy="11" r="1.1" ${W}/>`,
+  users: `<circle cx="9" cy="8" r="4"/><path d="M1.5 20.5a7.5 6.5 0 0 1 15 0z"/><circle cx="17" cy="9" r="3" opacity=".7"/><path d="M15.8 13.6a6 6 0 0 1 6.7 6.9h-4.2a8.6 8.6 0 0 0-2.5-6.9z" opacity=".7"/>`,
+  user: `<circle cx="12" cy="8" r="4.5"/><path d="M3.5 21a8.5 7.5 0 0 1 17 0z"/>`,
+  play: `<rect x="2" y="4.5" width="20" height="15" rx="5"/><path d="M10 9v6l5.2-3z" ${W}/>`,
+  party: `<path d="M3 21l4.4-12.8 8.4 8.4z"/><circle cx="14.5" cy="4.5" r="1.5"/><circle cx="19.5" cy="9.5" r="1.5"/><rect x="10" y="2" width="2" height="4" rx="1" transform="rotate(-20 11 4)"/><rect x="18" y="13" width="4" height="2" rx="1" transform="rotate(-20 20 14)"/><path d="M13 9.5c1.5-2.5 3.5-3.2 6-2.5" ${ST(1.8)}/>`,
+  cloud: `<path d="M7 19a5 5 0 0 1-.9-9.9A6.5 6.5 0 0 1 18.6 9.6 4.7 4.7 0 0 1 18 19z"/>`,
+  heart: `<path d="M12 21s-8.5-5.3-8.5-11.4A4.8 4.8 0 0 1 12 6.4a4.8 4.8 0 0 1 8.5 3.2C20.5 15.7 12 21 12 21z"/>`,
+  home: `<path d="M11.2 3.3a1.3 1.3 0 0 1 1.6 0l8.3 7a1 1 0 0 1-.6 1.7H19v7.5a2 2 0 0 1-2 2h-2.5v-5.5h-5v5.5H7a2 2 0 0 1-2-2V12H3.5a1 1 0 0 1-.6-1.7z"/>`,
+  bag: `<path d="M5 8h14l-1 12.2a2 2 0 0 1-2 1.8H8a2 2 0 0 1-2-1.8z"/><path d="M8.5 10V7a3.5 3.5 0 0 1 7 0v3" ${ST(2)}/>`,
+  sofa: `<path d="M5 6.5A2.5 2.5 0 0 1 7.5 4h9A2.5 2.5 0 0 1 19 6.5V10a2.5 2.5 0 0 0-2.5 2.5V13h-9v-.5A2.5 2.5 0 0 0 5 10z"/><path d="M2 12a2.5 2.5 0 0 1 5 0v2.5h10V12a2.5 2.5 0 0 1 5 0v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z"/>`,
+  phone: `<rect x="6" y="2" width="12" height="20" rx="3.5"/><rect x="9.5" y="18" width="5" height="1.6" rx=".8" ${W}/>`,
+  camera: `<path d="M8.5 4.5h7l1.5 2.2H19a3 3 0 0 1 3 3V18a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V9.7a3 3 0 0 1 3-3h2z"/><circle cx="12" cy="13.5" r="4" ${W}/><circle cx="12" cy="13.5" r="2.3"/>`,
+  send: `<path d="M21.5 2.5L2.6 10.2c-.9.4-.8 1.6.1 1.9l6.8 2.3 2.3 6.8c.3.9 1.5 1 1.9.1z"/>`,
+  briefcase: `<rect x="2" y="7" width="20" height="14" rx="3.5"/><path d="M8.5 7V5.5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2V7" ${ST(2)}/><rect x="2" y="12" width="20" height="1.8" ${W} fill-opacity=".55"/>`,
+  palette: `<path d="M12 2.5a9.5 9.5 0 0 0 0 19c1.4 0 2-1 2-2 0-1.3-1-1.5-1-2.8 0-1 .8-1.7 2-1.7h2.5a4 4 0 0 0 4-4C21.5 6.2 17.2 2.5 12 2.5z"/><circle cx="7.5" cy="11" r="1.6" ${W}/><circle cx="10" cy="7" r="1.6" ${W}/><circle cx="15" cy="7" r="1.6" ${W}/>`,
+  chart: `<rect x="3" y="12" width="4.5" height="9" rx="2"/><rect x="9.75" y="7" width="4.5" height="14" rx="2"/><rect x="16.5" y="3" width="4.5" height="18" rx="2"/>`,
+  bowl: `<path d="M2.5 11.5h19a9.5 8 0 0 1-19 0z"/><rect x="5" y="20" width="14" height="2" rx="1"/><path d="M9 3.5c-1 1.2-1 2.3 0 3.5M12 2.5c-1 1.2-1 2.6 0 4M15 3.5c-1 1.2-1 2.3 0 3.5" ${ST(1.8)}/>`,
+  cookie: `<circle cx="12" cy="12" r="10"/><circle cx="8" cy="9" r="1.5" ${W}/><circle cx="14.5" cy="7.5" r="1.2" ${W}/><circle cx="15.5" cy="13.5" r="1.6" ${W}/><circle cx="9.5" cy="15.5" r="1.3" ${W}/>`,
+  repeat: `<g ${ST(2.6)}><path d="M4 11V9a4 4 0 0 1 4-4h11l-3-3"/><path d="M20 13v2a4 4 0 0 1-4 4H5l3 3"/></g>`,
+  scale: `<rect x="3" y="3" width="18" height="18" rx="5.5"/><path d="M7.5 11a4.5 4.5 0 0 1 9 0z" ${W}/><path d="M12 11l1.8-2.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>`,
+  folder: `<path d="M2.5 6.5A2.5 2.5 0 0 1 5 4h4.3l2 2.2H19a2.5 2.5 0 0 1 2.5 2.5v9.8A2.5 2.5 0 0 1 19 21H5a2.5 2.5 0 0 1-2.5-2.5z"/>`,
+  mail: `<rect x="2" y="4.5" width="20" height="15" rx="4"/><path d="M5.5 8.5l6.5 4.5 6.5-4.5" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`,
+  cash: `<rect x="2" y="6" width="20" height="12" rx="3.5"/><circle cx="12" cy="12" r="3" ${W}/><circle cx="5.5" cy="12" r="1" ${W}/><circle cx="18.5" cy="12" r="1" ${W}/>`,
+  brain: `<path d="M9 3a3 3 0 0 0-3 3 3 3 0 0 0-2.5 4.6A3.3 3.3 0 0 0 5 16.5a3 3 0 0 0 4 3.5h2V3.6A3 3 0 0 0 9 3z"/><path d="M15 3a3 3 0 0 1 3 3 3 3 0 0 1 2.5 4.6A3.3 3.3 0 0 1 19 16.5a3 3 0 0 1-4 3.5h-2V3.6A3 3 0 0 1 15 3z" opacity=".75"/>`,
+  chat: `<path d="M12 3c5.2 0 9.5 3.4 9.5 7.8S17.2 18.6 12 18.6c-.9 0-1.8-.1-2.6-.3L4.5 21l1.2-4.1C3.7 15.5 2.5 13.3 2.5 10.8 2.5 6.4 6.8 3 12 3z"/><circle cx="8" cy="10.8" r="1.2" ${W}/><circle cx="12" cy="10.8" r="1.2" ${W}/><circle cx="16" cy="10.8" r="1.2" ${W}/>`,
+  cup: `<path d="M3.5 8h13v6.5A5.5 5.5 0 0 1 11 20h-2a5.5 5.5 0 0 1-5.5-5.5z"/><path d="M16.5 10h1.5a3 3 0 0 1 0 6h-1.8" ${ST(2)}/><path d="M8 2.5c-.8 1-.8 2 0 3M11.5 2.5c-.8 1-.8 2 0 3" ${ST(1.6)}/>`,
+  music: `<circle cx="7" cy="17.5" r="3.5"/><circle cx="17.5" cy="15.5" r="3.5"/><path d="M9.6 17.5V6l10.4-2.5v12" ${ST(2.4)}/>`,
+  game: `<path d="M7 6h10a5 5 0 0 1 5 5.2l-.4 5.2a3 3 0 0 1-5.4 1.6L14.6 16H9.4L7.8 18a3 3 0 0 1-5.4-1.6L2 11.2A5 5 0 0 1 7 6z"/><rect x="6" y="10.4" width="5" height="1.8" rx=".9" ${W}/><rect x="7.6" y="8.8" width="1.8" height="5" rx=".9" ${W}/><circle cx="16.5" cy="10" r="1.2" ${W}/><circle cx="18" cy="12.6" r="1.2" ${W}/>`,
+  box: `<path d="M12 2.5l9 4.5v10L12 21.5 3 17V7z"/><path d="M3 7l9 4.5L21 7M12 11.5v10" fill="none" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/>`,
+  mountain: `<path d="M1.5 20.5l7.5-13 4.2 6.3 2.6-3.6 6.7 10.3z"/><path d="M9 7.5l2.2 3.4-2.2-.9-1.9 1z" ${W}/>`,
+  crown: `<path d="M3 7l4.5 4L12 4l4.5 7L21 7l-1.5 11h-15z"/><rect x="4.5" y="19" width="15" height="2.2" rx="1.1"/>`,
+  megaphone: `<path d="M3 10a2 2 0 0 1 2-2h3l9-4.5v17L8 16H5a2 2 0 0 1-2-2z"/><path d="M8 16l1.5 5H12l-1-5z"/><rect x="19" y="10" width="2.5" height="4" rx="1.2"/>`,
+  trophy: `<path d="M7 3h10v5a5 5 0 0 1-10 0z"/><path d="M7 5H4a3 3 0 0 0 3 4M17 5h3a3 3 0 0 1-3 4" ${ST(2)}/><rect x="10.8" y="12.5" width="2.4" height="4.5"/><rect x="7.5" y="17" width="9" height="4" rx="1.5"/>`,
+  face1: face('M8.5 16.5c2-1.8 5-1.8 7 0'), face2: face('M9 16c2-.9 4-.9 6 0'), face3: face('M9 15.5h6'), face4: face('M8.8 14.6c1.8 1.6 4.6 1.6 6.4 0'), face5: face('M8 13.8c2 3.2 6 3.2 8 0'),
+  puzzle: `<path d="M4 7h4a2.5 2.5 0 1 1 5 0h4v4a2.5 2.5 0 1 1 0 5v4.5H4z"/>`,
+  cake: `<rect x="3" y="11" width="18" height="10" rx="3"/><path d="M3 14.5c1.5 1.3 3 1.3 4.5 0s3-1.3 4.5 0 3 1.3 4.5 0 3-1.3 4.5 0" fill="none" stroke="#fff" stroke-width="1.6"/><rect x="11" y="5" width="2" height="5.5" rx="1"/><path d="M12 1.8c.9 1 1.3 1.7 1.3 2.3a1.3 1.3 0 0 1-2.6 0c0-.6.4-1.3 1.3-2.3z"/>`,
+  lock: `<rect x="4" y="10" width="16" height="12" rx="3.5"/><path d="M8 10V7.5a4 4 0 0 1 8 0V10" ${ST(2.6)}/><circle cx="12" cy="16" r="1.8" ${W}/>`,
+  info: `<circle cx="12" cy="12" r="10"/><rect x="11" y="10.5" width="2" height="7" rx="1" ${W}/><circle cx="12" cy="7.5" r="1.3" ${W}/>`,
+  hash: `<rect x="2.5" y="2.5" width="19" height="19" rx="5.5"/><path d="M10 6.5l-1 11M15.5 6.5l-1 11M6.5 10h12M5.5 14h12" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>`,
+  car: `<path d="M5.5 7.5A3 3 0 0 1 8.3 5.5h7.4a3 3 0 0 1 2.8 2L20 11.5a2.5 2.5 0 0 1 1.5 2.3V18a1 1 0 0 1-1 1H19a2 2 0 0 1-4 0H9a2 2 0 0 1-4 0H3.5a1 1 0 0 1-1-1v-4.2A2.5 2.5 0 0 1 4 11.5z"/><path d="M7 11l1.2-3.2h7.6L17 11z" ${W}/>`,
+  pill: `<g transform="rotate(-45 12 12)"><rect x="2.6" y="8.2" width="18.8" height="7.6" rx="3.8"/><rect x="12.5" y="9.6" width="7.4" height="4.8" rx="2.4" ${W} fill-opacity=".55"/></g>`,
+  gift: `<rect x="3" y="8" width="18" height="5" rx="1.5"/><rect x="4.5" y="13" width="15" height="8.5" rx="2"/><rect x="11" y="8" width="2" height="13.5" ${W}/><path d="M12 8c-1.5-3.5-5.5-4.6-5.5-2.2C6.5 7.2 9 8 12 8zM12 8c1.5-3.5 5.5-4.6 5.5-2.2 0 1.4-2.5 2.2-5.5 2.2z"/>`,
+  trash: `<rect x="3.5" y="5" width="17" height="2.4" rx="1.2"/><rect x="9" y="2.5" width="6" height="3" rx="1.2"/><path d="M5.5 8.5h13l-1 11.2a2 2 0 0 1-2 1.8h-7a2 2 0 0 1-2-1.8z"/>`,
+  table: `<rect x="2.5" y="3.5" width="19" height="17" rx="4"/><path d="M2.5 9h19M2.5 14.6h19M9 9v11.5M15 9v11.5" stroke="#fff" stroke-width="1.6"/>`,
+  download: `<path d="M12 3v10.5M7 9l5 5 5-5" ${ST(2.8)}/><rect x="3" y="17.5" width="18" height="3.5" rx="1.75"/>`,
+  upload: `<path d="M12 15V4.5M7 9l5-5 5 5" ${ST(2.8)}/><rect x="3" y="17.5" width="18" height="3.5" rx="1.75"/>`,
+  clipboard: `<rect x="4" y="4" width="16" height="18" rx="4"/><rect x="8" y="2" width="8" height="5" rx="2" ${W} stroke="currentColor" stroke-width="1.8"/><rect x="7.5" y="11" width="9" height="2" rx="1" ${W}/><rect x="7.5" y="15" width="6" height="2" rx="1" ${W}/>`,
+  search: `<circle cx="10.5" cy="10.5" r="6.5" ${ST(3)}/><path d="M15.5 15.5l5 5" ${ST(3.2)}/>`,
+  clock: `<circle cx="12" cy="12" r="10"/><path d="M12 6.5V12l3.5 2.5" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`,
+  dots: `<circle cx="5" cy="12" r="2.4"/><circle cx="12" cy="12" r="2.4"/><circle cx="19" cy="12" r="2.4"/>`,
+  grid: `<rect x="3" y="3" width="8" height="8" rx="2.5"/><rect x="13" y="3" width="8" height="8" rx="2.5"/><rect x="3" y="13" width="8" height="8" rx="2.5"/><rect x="13" y="13" width="8" height="8" rx="2.5" opacity=".6"/>`,
+  layers: `<path d="M12 2.5l10 5-10 5-10-5z"/><path d="M3.5 12.2L12 16.5l8.5-4.3 1.5.8-10 5-10-5z" opacity=".75"/><path d="M3.5 16.2L12 20.5l8.5-4.3 1.5.8-10 5-10-5z" opacity=".5"/>`,
+  eye: `<path d="M12 5c5 0 8.6 3.6 10 7-1.4 3.4-5 7-10 7S3.4 15.4 2 12c1.4-3.4 5-7 10-7z"/><circle cx="12" cy="12" r="3.5" ${W}/><circle cx="12" cy="12" r="1.7"/>`,
+  filter: `<path d="M3 4.5A1.5 1.5 0 0 1 4.5 3h15A1.5 1.5 0 0 1 20.6 5.5L14.5 12.5V19a1 1 0 0 1-.6.9l-3 1.4a1 1 0 0 1-1.4-.9v-7.9L3.4 5.5A1.5 1.5 0 0 1 3 4.5z"/>`,
+  logout: `<path d="M10 3.5H6.5a3 3 0 0 0-3 3v11a3 3 0 0 0 3 3H10" ${ST(2.6)}/><path d="M16 7.5l4.5 4.5-4.5 4.5M20.5 12H9.5" ${ST(2.6)}/>`,
+  cardIc: `<rect x="2" y="5" width="20" height="14" rx="3.5"/><rect x="2" y="8.5" width="20" height="2.5" ${W} fill-opacity=".6"/><rect x="5" y="14" width="5" height="2" rx="1" ${W}/>`,
+};
+function icon(name, cls = '') {
+  const p = ICONS[name] || ICONS.sparkle;
+  return `<svg class="ic ${cls}" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">${p}</svg>`;
+}
+// every emoji the app uses → an icon
+const EMOJI_ICON = {
+  '🎯': 'target', '⚠️': 'alert', '💰': 'coin', '🪷': 'lotus', '✨': 'sparkle', '🗓️': 'calendar', '🎬': 'clapper', '✎': 'pencil', '✏️': 'pencil', '✍️': 'pencil',
+  '📚': 'book', '📖': 'book', '💧': 'drop', '✕': 'x', '→': 'arrow', '✅': 'check', '✔️': 'check', '🌸': 'blossom', '🪔': 'diya', '⏳': 'hourglass', '🔗': 'link',
+  '⚙️': 'gear', '😴': 'moon', '🌙': 'moon', '🛒': 'cart', '📝': 'note', '📰': 'note', '🌱': 'seedling', '🌿': 'leaf', '🌳': 'tree', '💡': 'bulb', '🔔': 'bell', '⏰': 'bell',
+  '📅': 'calendar', '🏃': 'dumbbell', '💪': 'dumbbell', '🌷': 'tulip', '⭐': 'star', '★': 'star', '☆': 'starO', '🌟': 'sparkle', '💫': 'sparkle', '☀️': 'sun', '🌈': 'rainbow',
+  '🙏': 'namaste', '📌': 'pin', '🚀': 'rocket', '🎓': 'cap', '🧑‍🏫': 'user', '👤': 'user', '🌐': 'globe', '🔥': 'fire', '🐷': 'piggy', '🤝': 'users', '▶️': 'play',
+  '🎉': 'party', '🎢': 'party', '☁️': 'cloud', '🏠': 'home', '🛍️': 'bag', '🛋️': 'sofa', '📱': 'phone', '📞': 'phone', '📸': 'camera', '✈️': 'send', '💼': 'briefcase',
+  '🎨': 'palette', '📊': 'chart', '📈': 'chart', '🍽️': 'bowl', '🥗': 'bowl', '🍛': 'bowl', '🍲': 'bowl', '🍳': 'bowl', '🍟': 'cookie', '🍫': 'cookie', '🍿': 'clapper',
+  '🫶': 'heart', '💗': 'heart', '💝': 'gift', '🤍': 'heart', '🔁': 'repeat', '⚖️': 'scale', '🗂️': 'folder', '✉️': 'mail', '💸': 'cash', '🧠': 'brain', '💬': 'chat',
+  '🟢': 'chat', '☕': 'cup', '💃': 'music', '🎧': 'music', '💅': 'sparkle', '💆‍♀️': 'lotus', '🧘': 'lotus', '🛺': 'car', '💊': 'pill', '🎁': 'gift', '🎮': 'game',
+  '📦': 'box', '🏔️': 'mountain', '👑': 'crown', '📣': 'megaphone', '🎖️': 'trophy', '🏆': 'trophy', '😣': 'face1', '😕': 'face2', '😐': 'face3', '🙂': 'face4', '😄': 'face5',
+  '🧩': 'puzzle', '🎂': 'cake', '🔐': 'lock', 'ℹ️': 'info', '🔢': 'hash', '🕉️': 'lotus', '🧾': 'note', '💳': 'cardIc', '🏦': 'home', '📋': 'clipboard', '🗒️': 'note', '🎵': 'music',
+};
+const EMOJI_RE = new RegExp(Object.keys(EMOJI_ICON).sort((a, b) => b.length - a.length).map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'g');
+// Replace emojis in text (not inside tags, <option>, <textarea> or svg <title>)
+function iconize(html) {
+  let inOpt = 0, inTa = 0, inTitle = 0;
+  return String(html).split(/(<[^>]*>)/).map(part => {
+    if (part[0] === '<') {
+      const t = part.toLowerCase();
+      if (t.startsWith('<option')) inOpt++; else if (t.startsWith('</option')) inOpt = Math.max(0, inOpt - 1);
+      else if (t.startsWith('<textarea')) inTa++; else if (t.startsWith('</textarea')) inTa = Math.max(0, inTa - 1);
+      else if (t.startsWith('<title')) inTitle++; else if (t.startsWith('</title')) inTitle = Math.max(0, inTitle - 1);
+      return part;
+    }
+    if (inTa || inTitle) return part;
+    if (inOpt) return part.replace(EMOJI_RE, '').replace(/^\s+/, '');
+    return part.replace(EMOJI_RE, m => icon(EMOJI_ICON[m]));
+  }).join('');
+}
+// icons offered in the picker (stored as their emoji key so old data keeps working)
+const PICKER = ['🪷', '🙏', '🌸', '🌷', '🌿', '🌱', '🌳', '✨', '⭐', '☀️', '🌙', '🔥', '💧', '💗', '🎯', '📚', '🎓', '🧠', '💡', '📝', '🗓️', '⏳', '🔔', '🏃', '🍽️', '☕', '💊',
+  '🏠', '🛒', '📦', '🛍️', '💰', '💸', '🐷', '💳', '💼', '🚀', '📊', '🗂️', '🎬', '▶️', '📸', '✈️', '💬', '✍️', '🌐', '📱', '🎨', '🎵', '🎮', '🛋️', '🍫', '🎁', '🎂', '🎉', '🏆', '👑', '🏔️', '🛺', '🤝', '👤', '🪔', '🔗', '🧩'];
 /* =========================================================
    Sankalpa — personal life planner
    Part 1: utilities, state, rewards, badges, reminder schedule
    ========================================================= */
-'use strict';
 
 // ---------- utilities ----------
 const $ = (s, r = document) => r.querySelector(s);
@@ -94,7 +235,7 @@ const NOTIFY_TYPES = [
   ['tasks', '✅ Task deadlines & reminders'], ['goals', '🎯 Goal deadlines'], ['study', '📚 Study timetable'], ['plan', '🗓️ Content plan for today'],
   ['content', '🎬 Content posting deadlines'], ['spaces', '🪷 Spaces (spiritual routine etc.)'], ['routines', '☀️ Daily routine reminders'],
   ['water', '💧 Water breaks'], ['lists', '🛒 To-do list items'], ['links', '🔗 Watch-later dates'], ['period', '🌸 Period coming up'], ['money', '💰 Savings goal deadlines'],
-  ['briefing', '☀️ Morning briefing'], ['evening', '🌙 Evening review'], ['festivals', '🪔 Festivals & vrat'], ['review', '📝 Weekly review'], ['planner', '🗓️ Day-planner blocks'],
+  ['sheets', '📊 Sheet deadlines'], ['briefing', '☀️ Morning briefing'], ['evening', '🌙 Evening review'], ['festivals', '🪔 Festivals & vrat'], ['review', '📝 Weekly review'], ['planner', '🗓️ Day-planner blocks'],
 ];
 // how many reward minutes each action earns (each person can change these)
 const EARN_TYPES = [
@@ -188,6 +329,7 @@ function defaultState() {
     money: { tx: [], expenseCats: EXP_CATS.map(x => ({ ...x })), incomeCats: INC_CATS.map(x => ({ ...x })) },
     contentPlan: { cells: {}, goals: {} }, v3: true,
     fest: [], reviews: {}, intentions: {}, v4: true, onboarded: false,
+    sheets: [], v5: true,
     settings: {
       name: '', currency: '₹', waterGoal: 8, sleepGoal: 8, weightGoal: '',
       remindBefore: [1440, 60],
@@ -234,6 +376,12 @@ function migrate(s) {
     s.rewards.activities.forEach(a => { if (a.id === 'a_idle') { a.name = 'Lazy day / do-nothing time'; a.emoji = '🛋️'; } });
     s.onboarded = s.onboarded || !!s.updatedAt; // existing users skip the welcome screen
     s.v4 = true;
+  }
+  if (!s.v5) {
+    // every icon now comes from the Sankalpa icon set
+    const fix = arr => (arr || []).forEach(x => { if (x && x.emoji && !EMOJI_ICON[x.emoji]) x.emoji = '✨'; });
+    [s.areas, s.habits, s.spaces, s.platforms, s.ventures, s.rewards.activities, s.lists, s.savings, s.money && s.money.expenseCats, s.money && s.money.incomeCats].forEach(fix);
+    s.sheets = s.sheets || []; s.v5 = true;
   }
   s.settings.earn = { ...Object.fromEntries(EARN_TYPES.map(e => [e[0], e[2]])), ...(s.settings.earn || {}) };
   s.settings.briefing = { morning: '07:00', evening: '21:30', reviewDay: 6, reviewTime: '19:00', ...(s.settings.briefing || {}) };
@@ -390,7 +538,7 @@ const beforeLabel = m => (BEFORE_OPTS.find(o => o[0] === m) || [m, `${m} min`])[
 function buildEvents() {
   const now = Date.now(), horizon = now + 30 * 864e5, ev = [];
   // shift: move out of quiet hours; 'exact': a time you chose yourself always rings
-  const TYPE = { t: 'tasks', tr: 'tasks', g: 'goals', c: 'content', cp: 'plan', pe: 'period', l: 'links', li: 'lists', tt: 'study', tm: 'study', sp: 'spaces', r: 'routines', w: 'water', sv: 'money', p: 'off', fe: 'festivals', mb: 'briefing', eb: 'evening', wr: 'review', pb: 'planner' };
+  const TYPE = { t: 'tasks', tr: 'tasks', g: 'goals', c: 'content', cp: 'plan', pe: 'period', l: 'links', li: 'lists', tt: 'study', tm: 'study', sp: 'spaces', r: 'routines', w: 'water', sv: 'money', p: 'off', sh: 'sheets', fe: 'festivals', mb: 'briefing', eb: 'evening', wr: 'review', pb: 'planner' };
   const add = (id, date, title, body, shift = true) => {
     const type = TYPE[id.split(':')[0]];
     if (type === 'off' || (type && S.settings.notify[type] === false)) return;
@@ -438,6 +586,16 @@ function buildEvents() {
   }
   // savings goal deadlines
   for (const sv of S.savings) if (sv.deadline && +sv.saved < +sv.target) add(`sv:${sv.id}:${sv.deadline}`, atTime(addDays(parseDate(sv.deadline), -7), '10:00'), `💰 ${sv.name}: 1 week left`, `${S.settings.currency}${(+sv.target - +sv.saved).toLocaleString()} still to go`);
+  // sheet rows with a deadline (1 day before + on the day)
+  for (const sh of (S.sheets || [])) {
+    const dc = sheetDateCol(sh); if (!dc) continue;
+    for (const r of sh.rows) {
+      const d = r.c[dc.id]; if (!d || rowComplete(sh, r)) continue;
+      const day = parseDate(d), title = rowTitle(sh, r);
+      add(`sh:${r.id}:${d}:1`, atTime(addDays(day, -1), '09:00'), `📊 Due tomorrow: ${title}`, sh.name, 'exact');
+      add(`sh:${r.id}:${d}:0`, atTime(day, '08:30'), `📊 Due today: ${title}`, sh.name, 'exact');
+    }
+  }
   // to-do list items with a due date
   for (const l of S.lists) for (const it of l.items) {
     if (it.done || !it.due) continue;
@@ -502,7 +660,7 @@ function buildEvents() {
 function toast(msg, emoji = '') {
   const t = document.createElement('div');
   t.className = 'toast';
-  t.innerHTML = `${emoji ? `<span class="toast-e">${emoji}</span>` : ''}<span>${esc(msg)}</span>`;
+  t.innerHTML = iconize(`${emoji ? `<span class="toast-e">${emoji}</span>` : ''}<span>${esc(msg)}</span>`);
   $('#toasts').appendChild(t);
   setTimeout(() => t.classList.add('out'), 2400);
   setTimeout(() => t.remove(), 2900);
@@ -517,7 +675,7 @@ let closeT = null;
 function openModal(html, cls = '') {
   clearTimeout(closeT);
   const m = $('#modal');
-  m.innerHTML = `<div class="sheet ${cls}" role="dialog" aria-modal="true">${html}</div>`;
+  m.innerHTML = iconize(`<div class="sheet ${cls}" role="dialog" aria-modal="true">${html}</div>`);
   m.hidden = false;
   requestAnimationFrame(() => m.classList.add('open'));
   const f = m.querySelector('input:not([type=checkbox]):not([type=hidden]), textarea, select');
@@ -543,6 +701,8 @@ function openForm({ title, fields, onSave, onDelete, saveLabel = 'Save' }) {
       case 'checks': inp = `<div class="checkrow" id="${id}">${f.options.map(([ov, ol]) => `<label class="pill-check"><input type="checkbox" value="${esc(ov)}" ${(v || []).map(String).includes(String(ov)) ? 'checked' : ''}><span>${esc(ol)}</span></label>`).join('')}</div>`; break;
       case 'days': inp = `<div class="checkrow" id="${id}">${DAYS.map((dn, i) => `<label class="pill-check"><input type="checkbox" value="${i}" ${(v || []).includes(i) ? 'checked' : ''}><span>${dn}</span></label>`).join('')}</div>`; break;
       case 'datetime': inp = `<input id="${id}" type="datetime-local" value="${esc(v)}">`; break;
+      case 'icon': inp = `<div class="icon-pick" id="${id}">${[...new Set([v || '✨', ...PICKER])].map(c => `<label title="${EMOJI_ICON[c] || ''}"><input type="radio" name="${id}" value="${c}" ${c === (v || '✨') ? 'checked' : ''}><span>${c}</span></label>`).join('')}</div>`; break;
+      case 'combo': inp = `<input id="${id}" list="${id}_dl" value="${esc(v)}" placeholder="${esc(f.placeholder || '')}"><datalist id="${id}_dl">${(f.options || []).map(o => `<option value="${esc(o)}"></option>`).join('')}</datalist>`; break;
       case 'color': inp = `<div class="swatches" id="${id}">${(f.options || SWATCHES).map(c => `<label><input type="radio" name="${id}" value="${c}" ${c === v ? 'checked' : ''}><span style="background:${c}"></span></label>`).join('')}</div>`; break;
       default: inp = `<input id="${id}" type="${f.type || 'text'}" value="${esc(v)}" placeholder="${esc(f.placeholder || '')}" ${f.type === 'number' ? 'step="any" inputmode="decimal"' : ''}>`;
     }
@@ -559,7 +719,7 @@ function readForm() {
     const el = $('#f_' + f.k);
     if (f.type === 'checks') out[f.k] = $$('input:checked', el).map(i => isNaN(+i.value) ? i.value : +i.value);
     else if (f.type === 'days') out[f.k] = $$('input:checked', el).map(i => +i.value);
-    else if (f.type === 'color') out[f.k] = ($('input:checked', el) || {}).value || f.value;
+    else if (f.type === 'color' || f.type === 'icon') out[f.k] = ($('input:checked', el) || {}).value || f.value;
     else if (f.type === 'number') out[f.k] = el.value === '' ? '' : +el.value;
     else out[f.k] = el.value.trim();
   }
@@ -631,6 +791,7 @@ const UI = { spaceId: null, venture: 'All', contentView: 'board', linkShow: 'tod
 
 const NAV = [['today', 'Today', '🪷'], ['tasks', 'Tasks', '✅'], ['timetable', 'Study', '📚'], ['health', 'Health', '💗'], ['more', 'More', '✨']];
 const MORE = [
+  ['sheets', 'Sheets', '📊', 'Excel-style trackers'],
   ['planner', 'Day planner', '🗓️', 'Drag tasks into time blocks'],
   ['goals', 'Goals', '🎯', 'Life vision to today'],
   ['spaces', 'My spaces', '🪷', 'Sadhana, self-care, hobbies'],
@@ -771,7 +932,7 @@ function upcomingDeadlines(days) {
 }
 function deadlineRow(x) {
   return `<a class="row-item" href="${x.href}"><span class="check ghost">${areaDot(x.area)}</span>
-    <div class="grow"><div class="title">${esc(x.title)}</div><div class="meta">${x.kind === 'content' ? esc(x.obj.platform + ' · ' + x.obj.stage) : x.kind === 'goal' ? 'Goal' : x.kind === 'item' ? esc(x.sub) : 'Savings goal'}</div></div>
+    <div class="grow"><div class="title">${esc(x.title)}</div><div class="meta">${x.kind === 'content' ? esc(x.obj.platform + ' · ' + x.obj.stage) : x.kind === 'goal' ? 'Goal' : (x.kind === 'item' || x.kind === 'sheet') ? esc(x.sub) : 'Savings goal'}</div></div>
     <div class="right">${dueBadge(x.obj.deadline)}</div></a>`;
 }
 
@@ -822,14 +983,14 @@ function vGoals() {
       : `<section class="card">${empty('🎯', 'No goals for this period yet.', '<button class="btn primary" data-a="newGoal">+ New goal</button>')}</section>`);
 }
 function goalRow(g) {
-  const ts = S.tasks.filter(t => t.goalId === g.id), dn = ts.filter(t => t.done).length;
-  const frac = g.done ? 1 : ts.length ? dn / ts.length : 0;
+  const ts = S.tasks.filter(t => t.goalId === g.id), ex = goalExtra(g), dn = ts.filter(t => t.done).length + ex.d, tot = ts.length + ex.n;
+  const frac = g.done ? 1 : tot ? dn / tot : 0;
   return `<div class="row-item goal ${g.done ? 'is-done' : ''}">
     <button class="check ${g.done ? 'on' : ''}" style="--c:${areaOf(g.areaId).color}" data-a="toggleGoal" data-id="${g.id}" aria-label="Toggle goal">${g.done ? '✓' : ''}</button>
     <div class="grow" data-a="editGoal" data-id="${g.id}" role="button" tabindex="0">
       <div class="title">${esc(g.title)}</div>
       ${progressBar(frac, areaOf(g.areaId).color)}
-      <div class="meta">${ts.length ? `${dn}/${ts.length} tasks done` : 'No linked tasks yet'}${g.notes ? ' · ' + esc(g.notes.slice(0, 60)) : ''}</div>
+      <div class="meta">${tot ? `${dn}/${tot} done` : 'No linked tasks yet'}${g.notes ? ' · ' + esc(g.notes.slice(0, 60)) : ''}</div>
     </div>
     <div class="right">${g.done ? '' : dueBadge(g.deadline)}<span class="row-tools">${g.done ? '' : `<button class="tool ${g.focus ? 'on' : ''}" data-a="toggleFocus" data-id="${g.id}" title="Focus goal" aria-label="Focus goal">🎯</button>${starBtn('goal', g)}`}<button class="mini-btn" data-a="newTask" data-goal="${g.id}" title="Add a task to this goal">+ task</button></span></div></div>`;
 }
@@ -1206,15 +1367,15 @@ function focusBlock() {
   const fg = S.goals.filter(g => g.focus && !g.done).slice(0, 2);
   if (!fg.length) return `<section class="focus-empty" data-a="goFocus" role="button" tabindex="0"><span class="shape-blob"></span><div><b>🎯 Choose your 2 focus goals</b><p>Pick the two goals that matter most in this phase. They'll live here, front and centre.</p></div><span class="arrow">→</span></section>`;
   return `<div class="focus-grid">${fg.map((g, i) => {
-    const ts = S.tasks.filter(t => t.goalId === g.id), dn = ts.filter(t => t.done).length;
-    const frac = ts.length ? dn / ts.length : 0;
+    const ts = S.tasks.filter(t => t.goalId === g.id), ex = goalExtra(g), dn = ts.filter(t => t.done).length + ex.d, tot = ts.length + ex.n;
+    const frac = tot ? dn / tot : 0;
     const next = ts.filter(t => !t.done).sort((a, b) => (parseDate(a.deadline) || 9e15) - (parseDate(b.deadline) || 9e15)).slice(0, 3);
     const d = g.deadline ? Math.ceil((parseDate(g.deadline) - Date.now()) / 864e5) : null;
     return `<section class="focus-card f${i}">
       <span class="deco d1"></span><span class="deco d2"></span>
       <div class="focus-top">${ring(frac)}<div class="grow"><span class="eyebrow">Focus goal ${i + 1} · ${esc(areaOf(g.areaId).emoji)} ${esc(areaOf(g.areaId).name)}</span>
         <h3 data-a="editGoal" data-id="${g.id}" role="button" tabindex="0">${esc(g.title)}</h3>
-        <span class="meta">${ts.length ? `${dn} of ${ts.length} steps done` : 'Add steps to track progress'}${d != null ? ` · ${d >= 0 ? d + ' days left' : 'overdue'}` : ''}</span></div></div>
+        <span class="meta">${tot ? `${dn} of ${tot} steps done` : 'Add steps to track progress'}${d != null ? ` · ${d >= 0 ? d + ' days left' : 'overdue'}` : ''}</span></div></div>
       <div class="focus-steps">${next.map(t => `<div class="step"><button class="check" style="--c:#fff" data-a="toggleTask" data-id="${t.id}" aria-label="Done">${''}</button><span class="grow" data-a="editTask" data-id="${t.id}" role="button" tabindex="0">${esc(t.title)}</span>${dueBadge(t.deadline)}</div>`).join('') || '<p class="small">No open steps. What\'s the next small action?</p>'}</div>
       <button class="btn small" data-a="newTask" data-goal="${g.id}">+ Next step</button></section>`;
   }).join('')}${fg.length === 1 ? `<section class="focus-card add" data-a="goFocus" role="button" tabindex="0"><span class="plus">＋</span><b>Add a second focus goal</b></section>` : ''}</div>`;
@@ -1660,6 +1821,212 @@ VIEWS.utsav = vUtsav; VIEWS.review = vReview; VIEWS.planner = vPlannerDay;
     `<div class="mandala" style="right:-140px;top:-140px">${mandalaSVG(460, '#B8913F', .28)}</div><div class="mandala" style="left:-160px;bottom:-160px">${mandalaSVG(520, '#B8913F', .22)}</div>` +
     `<div style="position:absolute;left:46%;top:22%;opacity:.5">${lotusIcon(34, '#B8913F')}</div><div style="position:absolute;left:12%;top:70%;opacity:.4">${lotusIcon(26, '#B8913F')}</div>`;
 })();
+/* Part 3f: Sheets — Excel-style trackers with custom columns, shown as cards */
+
+Object.assign(UI, { sheetId: null, sheetQ: '', sheetShow: 'all', collapsed: {} });
+
+const COL_TYPES = [['text', 'Text'], ['date', 'Date / deadline'], ['status', 'Status (Done, N/A…)'], ['select', 'Dropdown'], ['link', 'Link'], ['number', 'Number'], ['check', 'Checkbox']];
+const STATUS_DEFAULT = ['Not started', 'In progress', 'Done', 'N/A'];
+const isDoneVal = v => /^(done|completed?|yes|✓|posted|finished)$/i.test(String(v || '').trim());
+const isNAVal = v => /^(n\/?a|na|skip(ped)?|not needed|-)$/i.test(String(v || '').trim());
+function statusTone(v) {
+  if (isDoneVal(v)) return 'done'; if (isNAVal(v)) return 'na';
+  if (/progress|doing|ongoing|review|draft|editing|recording/i.test(v || '')) return 'mid';
+  return 'todo';
+}
+const sheetDateCol = sh => sh.cols.find(c => c.id === sh.dateCol) || sh.cols.find(c => c.type === 'date');
+const sheetTitleCol = sh => sh.cols.find(c => c.id === sh.titleCol) || sh.cols.find(c => c.type === 'text') || sh.cols[0];
+const rowTitle = (sh, r) => { const c = sheetTitleCol(sh); return (c && String(r.c[c.id] || '').trim()) || 'Untitled row'; };
+function rowProgress(sh, r) {
+  let d = 0, n = 0;
+  for (const c of sh.cols) {
+    if (c.type === 'status') { const v = r.c[c.id]; if (isNAVal(v)) continue; n++; if (isDoneVal(v)) d++; }
+    if (c.type === 'check') { n++; if (r.c[c.id]) d++; }
+  }
+  return { d, n };
+}
+const rowComplete = (sh, r) => { const p = rowProgress(sh, r); return p.n > 0 && p.d === p.n; };
+function sheetProgress(sh) { const done = sh.rows.filter(r => rowComplete(sh, r)).length; return { done, total: sh.rows.length, frac: sh.rows.length ? done / sh.rows.length : 0 }; }
+
+const mkCol = (name, type, options) => ({ id: uid(), name, type, ...(options ? { options } : {}) });
+const SHEET_TEMPLATES = [
+  { id: 'course', icon: '🎓', name: 'Course production tracker', desc: 'Deadline, week, section, lecture, and each deliverable as a status',
+    cols: () => [mkCol('Deadline', 'date'), mkCol('Week', 'select', ['Week 1', 'Week 2', 'Week 3', 'Week 4']), mkCol('Topic Section', 'select', ['Biology', 'Chemistry', 'General Aptitude']),
+      mkCol('Lecture name', 'text'), mkCol('PPT Content', 'status', [...STATUS_DEFAULT]), mkCol('MCQs Content', 'status', [...STATUS_DEFAULT]), mkCol('Final PPT', 'status', [...STATUS_DEFAULT]),
+      mkCol('Final Quiz', 'status', [...STATUS_DEFAULT]), mkCol('Final Video', 'status', [...STATUS_DEFAULT])], group: 'Week' },
+  { id: 'syllabus', icon: '📚', name: 'Study syllabus tracker', desc: 'Subject, topic, deadline, reading, revisions and PYQs',
+    cols: () => [mkCol('Subject', 'select', ['Biology', 'Chemistry', 'Physics', 'Maths']), mkCol('Topic', 'text'), mkCol('Deadline', 'date'), mkCol('Notes read', 'status', [...STATUS_DEFAULT]),
+      mkCol('Revision 1', 'status', [...STATUS_DEFAULT]), mkCol('Revision 2', 'status', [...STATUS_DEFAULT]), mkCol('PYQs', 'status', [...STATUS_DEFAULT]), mkCol('Confidence', 'select', ['Low', 'Medium', 'High'])], group: 'Subject' },
+  { id: 'content', icon: '🎬', name: 'Content calendar', desc: 'Date, platform, topic, format, script → posted, link',
+    cols: () => [mkCol('Date', 'date'), mkCol('Platform', 'select', S.platforms.map(p => p.name)), mkCol('Topic', 'text'), mkCol('Format', 'select', ['Reel', 'Post', 'Carousel', 'Story', 'Video', 'Blog']),
+      mkCol('Script', 'status', [...STATUS_DEFAULT]), mkCol('Shoot', 'status', [...STATUS_DEFAULT]), mkCol('Edit', 'status', [...STATUS_DEFAULT]), mkCol('Posted', 'status', [...STATUS_DEFAULT]), mkCol('Link', 'link')], group: 'Platform' },
+  { id: 'blank', icon: '📊', name: 'Blank sheet', desc: 'Title, deadline, status, notes — add any columns you like',
+    cols: () => [mkCol('Title', 'text'), mkCol('Deadline', 'date'), mkCol('Status', 'status', [...STATUS_DEFAULT]), mkCol('Notes', 'text')], group: '' },
+];
+function sheetFromTemplate(t, name) {
+  const cols = t.cols();
+  return { id: uid(), name: name || t.name, emoji: t.icon, cols, rows: [], groupBy: (cols.find(c => c.name === t.group) || {}).id || '', goalId: '', created: Date.now() };
+}
+
+// ---------- smart import (paste from Excel / Google Sheets, .xlsx, .csv) ----------
+function normStatus(v) {
+  const s = String(v ?? '').trim();
+  if (!s) return 'Not started';
+  if (isDoneVal(s)) return 'Done'; if (isNAVal(s)) return 'N/A';
+  if (/progress|doing|ongoing/i.test(s)) return 'In progress';
+  if (/^(pending|not started|todo|to do|no)$/i.test(s)) return 'Not started';
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+const MONTH_RE = /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\b/i;
+function looksDate(v) {
+  const s = String(v).trim(); if (!s || /^https?:/i.test(s)) return false;
+  const ok = /^\d{4}-\d{2}-\d{2}/.test(s) || /^\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}$/.test(s) || /^\d{5}$/.test(s) || (MONTH_RE.test(s) && /\d/.test(s));
+  return ok && !!normDate(s);
+}
+function detectType(name, vals) {
+  const v = vals.map(x => String(x ?? '').trim()).filter(Boolean);
+  if (!v.length) return /deadline|date|due/i.test(name) ? 'date' : 'text';
+  if (v.every(looksDate)) return 'date';
+  if (v.every(x => isDoneVal(x) || isNAVal(x) || /^(pending|not started|todo|to do|in progress|ongoing|doing|no)$/i.test(x))) return 'status';
+  if (v.every(x => /^https?:\/\//i.test(x))) return 'link';
+  if (v.every(x => /^-?[\d,]+(\.\d+)?$/.test(x))) return 'number';
+  const uniq = new Set(v.map(x => x.toLowerCase()));
+  if (uniq.size <= 10 && v.length >= 3 && uniq.size <= Math.ceil(v.length / 1.6)) return 'select';
+  return 'text';
+}
+// rows: array of arrays; first row = headers when hasHeader
+function sheetFromTable(rows, name, hasHeader = true) {
+  rows = rows.filter(r => r.some(c => String(c ?? '').trim()));
+  if (!rows.length) throw new Error('Nothing to import — the table looks empty.');
+  const width = Math.max(...rows.map(r => r.length));
+  const head = hasHeader ? rows[0] : Array.from({ length: width }, (_, i) => `Column ${i + 1}`);
+  const body = hasHeader ? rows.slice(1) : rows;
+  const cols = Array.from({ length: width }, (_, i) => {
+    const nm = String(head[i] ?? '').trim() || `Column ${i + 1}`, vals = body.map(r => r[i]);
+    const type = detectType(nm, vals), col = mkCol(nm.replace(/\s+/g, ' '), type);
+    if (type === 'status') col.options = [...new Set([...STATUS_DEFAULT, ...vals.map(normStatus)])];
+    if (type === 'select') col.options = [...new Set(vals.map(x => String(x ?? '').trim()).filter(Boolean))];
+    return col;
+  });
+  const sh = { id: uid(), name, emoji: '📊', cols, rows: [], groupBy: '', goalId: '', created: Date.now() };
+  sh.rows = body.map(r => rowFromCells(sh, r));
+  const wk = cols.find(c => /^week/i.test(c.name) && c.type === 'select'); if (wk) sh.groupBy = wk.id;
+  return sh;
+}
+function rowFromCells(sh, cells) {
+  const c = {};
+  sh.cols.forEach((col, i) => {
+    let v = cells[i]; v = v == null ? '' : String(v).trim();
+    if (col.type === 'date') v = v ? normDate(v) : '';
+    else if (col.type === 'status') v = normStatus(v);
+    else if (col.type === 'check') v = isDoneVal(v) || /^(true|x)$/i.test(v);
+    else if (col.type === 'number') v = v === '' ? '' : +v.replace(/,/g, '');
+    if (v !== '' && v !== false) c[col.id] = v;
+  });
+  return { id: uid(), c, created: Date.now() };
+}
+function parsePasted(text) {
+  const lines = text.replace(/\r/g, '').split('\n');
+  while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+  const sep = lines.some(l => l.includes('\t')) ? '\t' : ',';
+  return lines.map(l => l.split(sep));
+}
+
+// ---------- views ----------
+function cellView(col, v) {
+  if (v === '' || v == null || v === false) return '';
+  if (col.type === 'date') return fmtDate(v);
+  if (col.type === 'link' || /^https?:\/\//i.test(String(v))) return `<a class="slink" href="${esc(v)}" target="_blank" rel="noopener">🔗 ${esc(String(v).replace(/^https?:\/\/(www\.)?/, '').slice(0, 28))}</a>`;
+  return esc(v);
+}
+function sheetRowCard(sh, r) {
+  const p = rowProgress(sh, r), done = p.n > 0 && p.d === p.n, dc = sheetDateCol(sh), tc = sheetTitleCol(sh);
+  const meta = sh.cols.filter(c => c !== tc && c !== dc && c.id !== sh.groupBy && !['status', 'check'].includes(c.type) && r.c[c.id] !== undefined && r.c[c.id] !== '');
+  const stats = sh.cols.filter(c => c.type === 'status' || c.type === 'check');
+  return `<article class="srow ${done ? 'done' : ''}">
+    <div class="srow-top"><button class="srow-title" data-a="editRow" data-id="${r.id}">${esc(rowTitle(sh, r))}</button>
+      ${dc && r.c[dc.id] ? (done ? `<span class="due due-ok">${fmtDate(r.c[dc.id])}</span>` : dueBadge(r.c[dc.id])) : ''}</div>
+    ${meta.length ? `<div class="srow-meta">${meta.map(c => `<span class="mchip ${c.type}"><small>${esc(c.name)}</small>${cellView(c, r.c[c.id])}</span>`).join('')}</div>` : ''}
+    ${stats.length ? `<div class="srow-status">${stats.map(c => {
+      if (c.type === 'check') return `<button class="st ${r.c[c.id] ? 'st-done' : 'st-todo'}" data-a="cycleCell" data-id="${r.id}" data-col="${c.id}"><small>${esc(c.name)}</small><b>${r.c[c.id] ? '✓ Yes' : 'No'}</b></button>`;
+      const v = r.c[c.id] || (c.options || STATUS_DEFAULT)[0];
+      return `<button class="st st-${statusTone(v)}" data-a="cycleCell" data-id="${r.id}" data-col="${c.id}" title="Tap to change"><small>${esc(c.name)}</small><b>${esc(v)}</b></button>`;
+    }).join('')}</div>` : ''}
+    ${p.n ? `<div class="srow-prog">${progressBar(p.d / p.n, done ? '#3E9C6E' : '#B94E86')}<span>${p.d}/${p.n}</span></div>` : ''}
+  </article>`;
+}
+function vSheets() {
+  if (!S.sheets.find(x => x.id === UI.sheetId)) UI.sheetId = S.sheets[0]?.id || null;
+  const sh = S.sheets.find(x => x.id === UI.sheetId);
+  const tabs = `<div class="chips">${S.sheets.map(x => `<button class="chip ${x.id === UI.sheetId ? 'on' : ''}" data-a="openSheet" data-id="${x.id}">${x.emoji || '📊'} ${esc(x.name)}</button>`).join('')}<button class="chip add" data-a="newSheet">＋ New sheet</button></div>`;
+  if (!sh) return pageHead('Sheets', 'Excel-style trackers with your own columns, deadlines and progress.') + tabs + `
+    <section class="card">${empty('📊', 'Start from a template, or paste a table straight from Excel or Google Sheets.', '<div class="row center wrap"><button class="btn primary" data-a="newSheet">＋ New sheet</button><button class="btn" data-a="pasteSheet">📋 Paste from Excel</button></div>')}</section>`;
+  const pr = sheetProgress(sh), q = UI.sheetQ.trim().toLowerCase();
+  let rows = sh.rows.filter(r => (UI.sheetShow === 'all' || (UI.sheetShow === 'open' ? !rowComplete(sh, r) : rowComplete(sh, r))) &&
+    (!q || Object.values(r.c).some(v => String(v).toLowerCase().includes(q))));
+  const dc = sheetDateCol(sh), next = dc ? sh.rows.filter(r => r.c[dc.id] && !rowComplete(sh, r)).sort((a, b) => a.c[dc.id].localeCompare(b.c[dc.id]))[0] : null;
+  const goal = sh.goalId && S.goals.find(g => g.id === sh.goalId);
+  const gcol = sh.cols.find(c => c.id === sh.groupBy);
+  let body;
+  if (gcol) {
+    const groups = new Map();
+    rows.forEach(r => { const k = String(r.c[gcol.id] || '—'); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); });
+    body = [...groups].map(([k, rs]) => {
+      const key = sh.id + ':' + k, closed = UI.collapsed[key], d = rs.filter(r => rowComplete(sh, r)).length;
+      return `<section class="sgroup"><button class="sgroup-h" data-a="toggleGroup" data-v="${esc(key)}"><span class="chev">${closed ? '▸' : '▾'}</span><b>${gcol.type === 'date' && k !== '—' ? fmtDate(k) : esc(k)}</b><span class="count">${d}/${rs.length}</span>${progressBar(rs.length ? d / rs.length : 0, '#B94E86')}</button>
+        ${closed ? '' : `<div class="srows">${rs.map(r => sheetRowCard(sh, r)).join('')}</div>`}</section>`;
+    }).join('');
+  } else body = `<div class="srows">${rows.map(r => sheetRowCard(sh, r)).join('')}</div>`;
+  return pageHead('Sheets', 'Tap a status to change it. Tap a title to edit the whole row.') + tabs + `
+    <section class="card sheet-hero"><div class="row">${ring(pr.frac, 66)}<div class="grow">
+      <h2 class="sheet-name">${sh.emoji || '📊'} ${esc(sh.name)}</h2>
+      <div class="small muted">${pr.done} of ${pr.total} rows complete${next ? ` · next deadline ${fmtDate(next.c[dc.id])}` : ''}${goal ? ` · 🎯 ${esc(goal.title)}` : ''}</div></div></div>
+      <div class="row wrap sheet-tools">
+        <button class="btn small primary" data-a="newRow">＋ Row</button>
+        <button class="btn small" data-a="manageCols">📊 Columns</button>
+        <button class="btn small" data-a="pasteSheet" data-into="1">📋 Paste rows</button>
+        <button class="btn small" data-a="importSheet">📦 Import</button>
+        <button class="btn small" data-a="exportSheet">📈 Export</button>
+        <button class="btn small ghost" data-a="sheetMenu">⚙️ Sheet options</button>
+      </div></section>
+    <div class="split-row"><input class="sheet-search" id="sheetQ" data-ch="sheetQ" value="${esc(UI.sheetQ)}" placeholder="Search rows…">
+      ${chips([['all', 'All'], ['open', 'Pending'], ['done', 'Complete']], UI.sheetShow, 'sheetShow')}</div>
+    ${rows.length ? body : `<section class="card">${empty('📝', sh.rows.length ? 'No rows match.' : 'No rows yet. Add one, or paste rows from Excel.', '')}</section>`}`;
+}
+function colManagerHTML(sh) {
+  const tl = t => (COL_TYPES.find(x => x[0] === t) || ['', t])[1];
+  return `<header class="sheet-head"><h2>Columns</h2><button class="icon-btn" data-a="closeModal" aria-label="Close">✕</button></header>
+    <p class="small muted">Rename, change type, reorder or remove columns. Removing a column hides its data from this sheet.</p>
+    <div class="list">${sh.cols.map((c, i) => `<div class="row-item"><div class="grow"><div class="title">${esc(c.name)}</div><div class="meta">${tl(c.type)}${c.options ? ' · ' + esc(c.options.slice(0, 4).join(', ')) + (c.options.length > 4 ? '…' : '') : ''}</div></div>
+      <button class="icon-btn" data-a="moveCol" data-id="${c.id}" data-v="-1" ${i === 0 ? 'disabled' : ''} aria-label="Move up">▴</button>
+      <button class="icon-btn" data-a="moveCol" data-id="${c.id}" data-v="1" ${i === sh.cols.length - 1 ? 'disabled' : ''} aria-label="Move down">▾</button>
+      <button class="icon-btn" data-a="editCol" data-id="${c.id}" aria-label="Edit">✎</button></div>`).join('')}</div>
+    <footer class="sheet-foot"><button class="btn" data-a="editCol">＋ Add column</button><button class="btn primary" data-a="closeModal">Done</button></footer>`;
+}
+function newSheetHTML() {
+  return `<header class="sheet-head"><h2>New sheet</h2><button class="icon-btn" data-a="closeModal" aria-label="Close">✕</button></header>
+    <div class="ob-choices">${SHEET_TEMPLATES.map(t => `<button class="ob" data-a="makeSheet" data-v="${t.id}"><span>${t.icon}</span><b>${esc(t.name)}</b><small>${esc(t.desc)}</small></button>`).join('')}
+      <button class="ob" data-a="pasteSheet"><span>📋</span><b>Paste from Excel / Google Sheets</b><small>Copy your cells (with the header row) and paste — columns are set up for you</small></button>
+      <button class="ob" data-a="importSheet"><span>📦</span><b>Import a file</b><small>.xlsx or .csv</small></button></div>`;
+}
+
+// today's deadlines include sheet rows
+const _upcoming = upcomingDeadlines;
+upcomingDeadlines = function (days) {
+  const out = _upcoming(days), lim = Date.now() + days * 864e5;
+  for (const sh of S.sheets) {
+    const dc = sheetDateCol(sh); if (!dc) continue;
+    for (const r of sh.rows) { const d = r.c[dc.id]; if (d && !rowComplete(sh, r) && parseDate(d) < lim) out.push({ kind: 'sheet', obj: { deadline: d }, at: parseDate(d), title: `${sh.emoji || '📊'} ${rowTitle(sh, r)}`, area: 'work', href: '#sheets', sub: sh.name }); }
+  }
+  return out.sort((a, b) => a.at - b.at);
+};
+// a goal linked to a sheet counts finished rows as progress
+function goalExtra(g) {
+  let d = 0, n = 0;
+  for (const sh of S.sheets) if (sh.goalId === g.id) { const p = sheetProgress(sh); d += p.done; n += p.total; }
+  return { d, n };
+}
+VIEWS.sheets = vSheets;
 /* Part 3b: Firebase sync, Google sign-in, push notifications.
    Each Google account has its own private planner. When sync is set up,
    the app shows a sign-in screen first, so nobody else can see your data. */
@@ -2092,10 +2459,10 @@ const A = {
   exportTT: () => exportTimetable(),
 
   // lists
-  newList() { openForm({ title: 'New list', fields: [{ k: 'name', label: 'Name', placeholder: 'e.g. Lab supplies' }, { k: 'emoji', label: 'Emoji', value: '📝' }], onSave: v => { if (!v.name) return false; const l = { id: uid(), name: v.name, emoji: v.emoji || '📝', items: [] }; S.lists.push(l); UI.listId = l.id; return true; } }); },
+  newList() { openForm({ title: 'New list', fields: [{ k: 'name', label: 'Name', placeholder: 'e.g. Lab supplies' }, { k: 'emoji', label: 'Icon', type: 'icon', value: '📝' }], onSave: v => { if (!v.name) return false; const l = { id: uid(), name: v.name, emoji: v.emoji || '📝', items: [] }; S.lists.push(l); UI.listId = l.id; return true; } }); },
   editList() {
     const l = findBy(S.lists, UI.listId);
-    openForm({ title: 'Edit list', fields: [{ k: 'name', label: 'Name', value: l.name }, { k: 'emoji', label: 'Emoji', value: l.emoji }], onSave: v => { Object.assign(l, v); return true; },
+    openForm({ title: 'Edit list', fields: [{ k: 'name', label: 'Name', value: l.name }, { k: 'emoji', label: 'Icon', type: 'icon', value: l.emoji }], onSave: v => { Object.assign(l, v); return true; },
       onDelete: async () => { if (await confirmBox(`Delete the “${l.name}” list?`)) { S.lists = S.lists.filter(x => x !== l); save(); } } });
   },
   toggleItem(d) {
@@ -2234,7 +2601,7 @@ function removeRow(t, r) {
 
 function activityForm(a = {}) {
   const isNew = !a.id;
-  openForm({ title: isNew ? 'New favourite activity' : 'Edit activity', fields: [{ k: 'name', label: 'Activity', value: a.name, placeholder: 'e.g. Netflix' }, { k: 'emoji', label: 'Emoji', value: a.emoji || '🎉' }],
+  openForm({ title: isNew ? 'New favourite activity' : 'Edit activity', fields: [{ k: 'name', label: 'Activity', value: a.name, placeholder: 'e.g. Netflix' }, { k: 'emoji', label: 'Icon', type: 'icon', value: a.emoji || '🎉' }],
     onSave: v => { if (!v.name) return false; if (isNew) S.rewards.activities.push({ id: uid(), ...v }); else Object.assign(a, v); return true; },
     onDelete: isNew ? null : () => { S.rewards.activities = S.rewards.activities.filter(x => x !== a); save(); } });
 }
@@ -2269,7 +2636,7 @@ function bucketForm(b = {}) {
 function savingForm(s = {}) {
   const isNew = !s.id, c = S.settings.currency;
   openForm({ title: isNew ? 'New savings goal' : 'Edit savings goal', fields: [
-    { k: 'name', label: 'Saving for', value: s.name, placeholder: 'e.g. Emergency fund' }, { k: 'emoji', label: 'Emoji', value: s.emoji || '💰' },
+    { k: 'name', label: 'Saving for', value: s.name, placeholder: 'e.g. Emergency fund' }, { k: 'emoji', label: 'Icon', type: 'icon', value: s.emoji || '💰' },
     { k: 'target', label: `Target (${c})`, type: 'number', value: s.target }, { k: 'saved', label: `Saved so far (${c})`, type: 'number', value: s.saved ?? 0 },
     { k: 'deadline', label: 'Deadline (optional)', type: 'date', value: s.deadline }],
     onSave: v => { if (!v.name || !v.target) return false; if (isNew) S.savings.push({ id: uid(), ...v }); else Object.assign(s, v); return true; },
@@ -2285,13 +2652,13 @@ function personForm(p = {}) {
 }
 function areaForm(a = {}) {
   const isNew = !a.id;
-  openForm({ title: isNew ? 'New life area' : 'Edit area', fields: [{ k: 'name', label: 'Name', value: a.name }, { k: 'emoji', label: 'Emoji', value: a.emoji || '✨' }, { k: 'color', label: 'Colour', type: 'color', value: a.color || SWATCHES[0] }],
+  openForm({ title: isNew ? 'New life area' : 'Edit area', fields: [{ k: 'name', label: 'Name', value: a.name }, { k: 'emoji', label: 'Icon', type: 'icon', value: a.emoji || '✨' }, { k: 'color', label: 'Colour', type: 'color', value: a.color || SWATCHES[0] }],
     onSave: v => { if (!v.name) return false; if (isNew) S.areas.push({ id: uid(), ...v }); else Object.assign(a, v); return true; },
     onDelete: isNew || S.areas.length < 2 ? null : async () => { if (await confirmBox(`Delete area “${a.name}”? Its tasks move to the first area.`)) { S.areas = S.areas.filter(x => x !== a); const f = S.areas[0].id; [...S.tasks, ...S.goals, ...S.habits].forEach(x => { if (x.areaId === a.id) x.areaId = f; }); save(); } } });
 }
 function habitForm(h = {}) {
   const isNew = !h.id;
-  openForm({ title: isNew ? 'New daily habit' : 'Edit habit', fields: [{ k: 'name', label: 'Habit', value: h.name, placeholder: 'e.g. 10 min meditation' }, { k: 'emoji', label: 'Emoji', value: h.emoji || '🌿' }, { k: 'areaId', label: 'Area', type: 'select', options: areaOptions(), value: h.areaId || 'balance' }],
+  openForm({ title: isNew ? 'New daily habit' : 'Edit habit', fields: [{ k: 'name', label: 'Habit', value: h.name, placeholder: 'e.g. 10 min meditation' }, { k: 'emoji', label: 'Icon', type: 'icon', value: h.emoji || '🌿' }, { k: 'areaId', label: 'Area', type: 'select', options: areaOptions(), value: h.areaId || 'balance' }],
     onSave: v => { if (!v.name) return false; if (isNew) S.habits.push({ id: uid(), ...v }); else Object.assign(h, v); return true; },
     onDelete: isNew ? null : () => { S.habits = S.habits.filter(x => x !== h); save(); } });
 }
@@ -2352,7 +2719,8 @@ function normDate(v) {
   if (/^\d{5}$/.test(s)) { const d = new Date(Math.round((+s - 25569) * 864e5)); return dkey(new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())); }
   const m = s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/); // day/month/year, as in India
   if (m) { const y = +m[3] < 100 ? 2000 + +m[3] : +m[3]; return dkey(new Date(y, +m[2] - 1, +m[1])); }
-  const d = new Date(s); return isNaN(d) ? '' : dkey(d);
+  if (!/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b/i.test(s)) return ''; // e.g. "Week 1" is not a date
+  const d = new Date(s); return isNaN(d) || d.getFullYear() < 1990 || d.getFullYear() > 2100 ? '' : dkey(d);
 }
 function setStage(c, stage) {
   const was = c.stage; if (!STAGES.includes(stage) || was === stage) return;
@@ -2462,7 +2830,7 @@ function render() {
   if (LOCKED) { main.innerHTML = vGate(); main.dataset.view = 'gate'; document.title = 'Sankalpa'; return; }
   const v = currentView();
   const y = window.scrollY, sameView = main.dataset.view === v;
-  main.innerHTML = VIEWS[v]();
+  main.innerHTML = iconize(VIEWS[v]());
   main.dataset.view = v;
   if (!sameView) window.scrollTo(0, 0); else window.scrollTo(0, y);
   document.title = `${TITLES[v]} · Sankalpa`;
@@ -2471,9 +2839,9 @@ function render() {
 }
 const shown = n => !S.hidden.includes(n[0]);
 function buildNav() {
-  $('#bottomnav').innerHTML = NAV.filter(shown).map(n => `<a href="#${n[0]}" data-nav="${n[0]}"><span>${n[2]}</span><small>${n[1]}</small></a>`).join('');
-  $('#sidenav').innerHTML = `<div class="brand"><span class="brand-mark">🌸</span><b>Sankalpa</b></div>` +
-    [...NAV.filter(n => n[0] !== 'more'), ...MORE].filter(shown).map(n => `<a href="#${n[0]}" data-nav="${n[0]}"><span>${n[2]}</span>${n[1]}</a>`).join('');
+  $('#bottomnav').innerHTML = iconize(NAV.filter(shown).map(n => `<a href="#${n[0]}" data-nav="${n[0]}"><span>${n[2]}</span><small>${n[1]}</small></a>`).join(''));
+  $('#sidenav').innerHTML = iconize(`<div class="brand"><span class="brand-mark">🪷</span><b>Sankalpa</b></div>` +
+    [...NAV.filter(n => n[0] !== 'more'), ...MORE].filter(shown).map(n => `<a href="#${n[0]}" data-nav="${n[0]}"><span>${n[2]}</span>${n[1]}</a>`).join(''));
 }
 
 // ---------- events ----------
@@ -2543,7 +2911,7 @@ Object.assign(A, {
     const p = S.phase;
     openForm({ title: 'Current life phase', fields: [
       { k: 'name', label: 'What phase are you in?', value: p.name, placeholder: 'e.g. JRF year 1 + growing my channel' },
-      { k: 'emoji', label: 'Emoji', value: p.emoji || '🌷' },
+      { k: 'emoji', label: 'Icon', type: 'icon', value: p.emoji || '🌷' },
       { k: 'until', label: 'Until (optional)', type: 'date', value: p.until },
       { k: 'note', label: 'What matters most in this phase', type: 'textarea', value: p.note }],
       onSave: v => { S.phase = v; return true; } });
@@ -2556,7 +2924,7 @@ Object.assign(A, {
     const reopen = () => setTimeout(() => A.manage({ v: kind }), 260);
     openForm({ title: x ? 'Edit' : (kind === 'platforms' ? 'New platform' : 'New startup'), fields: [
       { k: 'name', label: 'Name', value: x?.name, placeholder: kind === 'platforms' ? 'e.g. Instagram 4, Pinterest, Substack' : 'e.g. Biotech consultancy' },
-      { k: 'emoji', label: 'Emoji', value: x?.emoji || (kind === 'platforms' ? '🌐' : '🚀') }],
+      { k: 'emoji', label: 'Icon', type: 'icon', value: x?.emoji || (kind === 'platforms' ? '🌐' : '🚀') }],
       onSave: v => {
         if (!v.name) return false;
         if (x) { if (kind === 'platforms' && x.name !== v.name) S.content.forEach(c => { if (c.platform === x.name) c.platform = v.name; }); Object.assign(x, v); }
@@ -2602,7 +2970,7 @@ function spaceForm(sp = {}) {
   const isNew = !sp.id;
   openForm({ title: isNew ? 'New space' : 'Edit space', fields: [
     { k: 'name', label: 'Name', value: sp.name, placeholder: 'e.g. Spirituality, Self-care, Language learning' },
-    { k: 'emoji', label: 'Emoji', value: sp.emoji || '🪷' },
+    { k: 'emoji', label: 'Icon', type: 'icon', value: sp.emoji || '🪷' },
     { k: 'color', label: 'Colour', type: 'color', value: sp.color || SPACE_COLORS[0], options: SPACE_COLORS },
     { k: 'pinned', label: 'Show on Today', type: 'select', options: [['1', '📌 Yes'], ['0', 'No']], value: sp.pinned ? '1' : '0' }],
     onSave: v => {
@@ -2734,7 +3102,7 @@ Object.assign(A, {
   catEdit(d) {
     const type = UI.catTab || 'expense', arr = type === 'income' ? S.money.incomeCats : S.money.expenseCats, c = d.id ? findBy(arr, d.id) : null;
     const reopen = () => setTimeout(() => A.manageCats(), 260);
-    const fields = [{ k: 'name', label: 'Name', value: c?.name, placeholder: type === 'income' ? 'e.g. Freelance' : 'e.g. Coffee & snacks' }, { k: 'emoji', label: 'Emoji', value: c?.emoji || (type === 'income' ? '💰' : '💸') }];
+    const fields = [{ k: 'name', label: 'Name', value: c?.name, placeholder: type === 'income' ? 'e.g. Freelance' : 'e.g. Coffee & snacks' }, { k: 'emoji', label: 'Icon', type: 'icon', value: c?.emoji || (type === 'income' ? '💰' : '💸') }];
     if (type === 'expense') fields.push({ k: 'budget', label: `Monthly budget (${S.settings.currency}, optional)`, type: 'number', value: c?.budget ?? '' });
     openForm({ title: c ? 'Edit category' : 'New category', fields,
       onSave: v => { if (!v.name) return false; if (c) Object.assign(c, v); else arr.push({ id: uid(), ...v }); reopen(); return true; },
@@ -2918,3 +3286,148 @@ document.addEventListener('change', e => {
 
 // welcome screen on first open
 setTimeout(maybeOnboard, 500);
+/* Part 4d: sheet actions */
+const curSheet = () => S.sheets.find(x => x.id === UI.sheetId);
+function rowForm(sh, r) {
+  const isNew = !r;
+  const fields = sh.cols.map(c => {
+    const v = r ? r.c[c.id] : undefined;
+    if (c.type === 'date') return { k: c.id, label: c.name, type: 'date', value: v || '' };
+    if (c.type === 'status') return { k: c.id, label: c.name, type: 'select', options: (c.options || STATUS_DEFAULT).map(o => [o, o]), value: v || (c.options || STATUS_DEFAULT)[0] };
+    if (c.type === 'select') return { k: c.id, label: c.name, type: 'combo', options: c.options || [], value: v || '', placeholder: 'Pick or type a new one' };
+    if (c.type === 'number') return { k: c.id, label: c.name, type: 'number', value: v ?? '' };
+    if (c.type === 'check') return { k: c.id, label: c.name, type: 'select', options: [['0', 'No'], ['1', '✓ Yes']], value: v ? '1' : '0' };
+    return { k: c.id, label: c.name, value: v || '', placeholder: c.type === 'link' ? 'https://…' : '' };
+  });
+  openForm({ title: isNew ? `New row · ${sh.name}` : rowTitle(sh, r), fields, saveLabel: isNew ? 'Add row' : 'Save',
+    onSave: v => {
+      const c = {}, was = r ? rowComplete(sh, r) : false;
+      for (const col of sh.cols) {
+        let x = v[col.id];
+        if (col.type === 'check') x = x === '1';
+        if (col.type === 'select' && x && !(col.options || []).includes(x)) col.options = [...(col.options || []), x];
+        if (x !== '' && x !== false && x != null) c[col.id] = x;
+      }
+      if (isNew) { const nr = { id: uid(), c, created: Date.now() }; sh.rows.push(nr); if (rowComplete(sh, nr)) earn(ER('plan'), 10, 'Done: ' + rowTitle(sh, nr), true); }
+      else { r.c = c; if (!was && rowComplete(sh, r)) earn(ER('plan'), 10, 'Done: ' + rowTitle(sh, r)); }
+      return true;
+    },
+    onDelete: isNew ? null : async () => { if (await confirmBox(`Delete “${rowTitle(sh, r)}”?`)) { sh.rows = sh.rows.filter(x => x !== r); save(); } } });
+}
+function colForm(sh, c) {
+  const isNew = !c;
+  openForm({ title: isNew ? 'New column' : 'Edit column', fields: [
+    { k: 'name', label: 'Column name', value: c?.name, placeholder: 'e.g. Final Video, Week, Notes' },
+    { k: 'type', label: 'Type', type: 'select', options: COL_TYPES, value: c?.type || 'status' },
+    { k: 'options', label: 'Options (for Status / Dropdown), comma-separated', value: (c?.options || (isNew ? STATUS_DEFAULT : [])).join(', ') }],
+    onSave: v => {
+      if (!v.name) return false;
+      const opts = v.options.split(',').map(x => x.trim()).filter(Boolean);
+      const data = { name: v.name, type: v.type, ...(['status', 'select'].includes(v.type) ? { options: opts.length ? opts : [...STATUS_DEFAULT] } : {}) };
+      if (isNew) sh.cols.push({ id: uid(), ...data });
+      else {
+        if (c.type !== data.type) sh.rows.forEach(r => { const x = r.c[c.id]; if (x === undefined) return;
+          if (data.type === 'status') r.c[c.id] = normStatus(x); else if (data.type === 'date') r.c[c.id] = normDate(x) || ''; else if (data.type === 'check') r.c[c.id] = isDoneVal(x) || x === true; });
+        delete c.options; Object.assign(c, data);
+      }
+      setTimeout(() => A.manageCols(), 260); return true;
+    },
+    onDelete: isNew || sh.cols.length < 2 ? null : async () => {
+      if (await confirmBox(`Remove the “${c.name}” column?`, 'Remove')) { sh.cols = sh.cols.filter(x => x !== c); sh.rows.forEach(r => delete r.c[c.id]); if (sh.groupBy === c.id) sh.groupBy = ''; save(); setTimeout(() => A.manageCols(), 260); }
+    } });
+}
+function pasteForm(into) {
+  const sh = curSheet();
+  openForm({ title: into && sh ? `Paste rows into ${sh.name}` : 'Paste from Excel / Google Sheets', saveLabel: 'Import',
+    fields: [
+      { k: 'text', label: 'Copy the cells in Excel or Google Sheets, then paste here', type: 'textarea', placeholder: 'DEADLINE\tWEEK\tTopic Section\tLecture name\t…' },
+      { k: 'header', label: 'First row', type: 'select', options: [['1', 'Has the column names'], ['0', 'Is data (no column names)']], value: into && sh ? '0' : '1' },
+      ...(into && sh ? [] : [{ k: 'name', label: 'Sheet name', value: 'My sheet' }])],
+    onSave: v => {
+      const rows = parsePasted(v.text || '');
+      if (!rows.length) { toast('Paste some cells first', '📋'); return false; }
+      try {
+        if (into && sh) {
+          let body = rows;
+          if (v.header === '1') {
+            const head = rows[0].map(h => String(h).trim().toLowerCase()); body = rows.slice(1);
+            const map = sh.cols.map(c => head.indexOf(c.name.toLowerCase()));
+            body = body.map(r => map.map((ix, i) => ix >= 0 ? r[ix] : r[i]));
+          }
+          body.filter(r => r.some(x => String(x).trim())).forEach(r => sh.rows.push(rowFromCells(sh, r)));
+          toast(`Added ${body.length} row${body.length === 1 ? '' : 's'}`, '📋');
+        } else {
+          const ns = sheetFromTable(rows, v.name || 'My sheet', v.header === '1');
+          S.sheets.push(ns); UI.sheetId = ns.id;
+          toast(`Created “${ns.name}” with ${ns.rows.length} rows`, '📊');
+        }
+      } catch (e) { toast(e.message, '⚠️'); return false; }
+      if (location.hash !== '#sheets') location.hash = 'sheets';
+      return true;
+    } });
+}
+
+Object.assign(A, {
+  openSheet(d) { UI.sheetId = d.id; UI.sheetQ = ''; if (location.hash !== '#sheets') location.hash = 'sheets'; else render(); },
+  newSheet() { openModal(newSheetHTML()); },
+  makeSheet(d) {
+    const t = SHEET_TEMPLATES.find(x => x.id === d.v); closeModal();
+    setTimeout(() => ask('Name your sheet', 'Sheet name', t.id === 'course' ? 'GAT-B course 2026' : t.name).then(n => {
+      const sh = sheetFromTemplate(t, n || t.name); S.sheets.push(sh); UI.sheetId = sh.id;
+      if (location.hash !== '#sheets') location.hash = 'sheets'; save();
+    }), 220);
+  },
+  sheetShow(d) { UI.sheetShow = d.v; render(); },
+  toggleGroup(d) { UI.collapsed[d.v] = !UI.collapsed[d.v]; render(); },
+  newRow() { rowForm(curSheet()); },
+  editRow(d) { const sh = curSheet(); rowForm(sh, findBy(sh.rows, d.id)); },
+  cycleCell(d) {
+    const sh = curSheet(), r = findBy(sh.rows, d.id), c = findBy(sh.cols, d.col), was = rowComplete(sh, r);
+    if (c.type === 'check') r.c[c.id] = !r.c[c.id];
+    else { const opts = c.options || STATUS_DEFAULT, cur = r.c[c.id] || opts[0]; r.c[c.id] = opts[(opts.indexOf(cur) + 1) % opts.length]; }
+    const now = rowComplete(sh, r);
+    if (!was && now) earn(ER('plan'), 10, 'Done: ' + rowTitle(sh, r)); else if (was && !now) unearn(ER('plan'), 10, 'Undid: ' + rowTitle(sh, r));
+    save();
+  },
+  manageCols() { openModal(colManagerHTML(curSheet())); },
+  editCol(d) { const sh = curSheet(); colForm(sh, d.id ? findBy(sh.cols, d.id) : null); },
+  moveCol(d) { const sh = curSheet(), i = sh.cols.findIndex(c => c.id === d.id), j = i + +d.v; if (j < 0 || j >= sh.cols.length) return; [sh.cols[i], sh.cols[j]] = [sh.cols[j], sh.cols[i]]; save({ silent: true }); A.manageCols(); },
+  pasteSheet(d) { closeModal(); setTimeout(() => pasteForm(d.into === '1'), 200); },
+  importSheet() { closeModal(); $('#sheetIn').click(); },
+  async exportSheet() {
+    try {
+      await loadXLSX(); const sh = curSheet();
+      const aoa = [sh.cols.map(c => c.name), ...sh.rows.map(r => sh.cols.map(c => { const v = r.c[c.id]; return c.type === 'check' ? (v ? '✓' : '') : v ?? ''; }))];
+      const ws = XLSX.utils.aoa_to_sheet(aoa); ws['!cols'] = sh.cols.map(c => ({ wch: c.type === 'text' ? 36 : 14 }));
+      const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, sh.name.slice(0, 30));
+      XLSX.writeFile(wb, `${sh.name.replace(/[^\w\- ]/g, '') || 'sheet'}.xlsx`); toast('Excel file downloaded', '📊');
+    } catch (e) { toast(e.message, '⚠️'); }
+  },
+  sheetMenu() {
+    const sh = curSheet();
+    openForm({ title: 'Sheet options', fields: [
+      { k: 'name', label: 'Name', value: sh.name }, { k: 'emoji', label: 'Icon', type: 'icon', value: sh.emoji || '📊' },
+      { k: 'groupBy', label: 'Group rows by', type: 'select', options: [['', 'No grouping'], ...sh.cols.filter(c => ['select', 'date', 'text', 'status'].includes(c.type)).map(c => [c.id, c.name])], value: sh.groupBy || '' },
+      { k: 'titleCol', label: 'Row title comes from', type: 'select', options: sh.cols.filter(c => c.type === 'text' || c.type === 'select').map(c => [c.id, c.name]), value: sheetTitleCol(sh)?.id },
+      { k: 'goalId', label: 'Counts towards goal', type: 'select', options: [['', '— none —'], ...S.goals.filter(g => !g.done || g.id === sh.goalId).map(g => [g.id, '🎯 ' + g.title])], value: sh.goalId || '' }],
+      onSave: v => { Object.assign(sh, v); return true; },
+      onDelete: async () => { if (await confirmBox(`Delete the sheet “${sh.name}” and all its rows?`)) { S.sheets = S.sheets.filter(x => x !== sh); UI.sheetId = null; save(); } } });
+  },
+});
+document.addEventListener('input', e => {
+  if (e.target.id === 'sheetQ') { UI.sheetQ = e.target.value; const pos = e.target.selectionStart; render(); const el = $('#sheetQ'); if (el) { el.focus(); el.setSelectionRange(pos, pos); } }
+});
+document.addEventListener('change', async e => {
+  const el = e.target;
+  if (el.id === 'sheetIn' && el.files[0]) {
+    const f = el.files[0]; el.value = '';
+    try {
+      await loadXLSX();
+      const wb = XLSX.read(await f.arrayBuffer());
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '', raw: false });
+      const sh = sheetFromTable(rows, f.name.replace(/\.[^.]+$/, ''), true);
+      S.sheets.push(sh); UI.sheetId = sh.id; if (location.hash !== '#sheets') location.hash = 'sheets'; save();
+      toast(`Imported “${sh.name}” · ${sh.rows.length} rows`, '📊');
+    } catch (err) { toast(err.message || 'Could not read that file', '⚠️'); }
+  }
+});
