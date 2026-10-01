@@ -952,7 +952,7 @@ function taskRow(t) {
     <button class="check ${t.done ? 'on' : ''}" style="--c:${areaOf(t.areaId).color}" data-a="toggleTask" data-id="${t.id}" aria-label="${t.done ? 'Mark not done' : 'Mark done'}">${t.done ? '✓' : ''}</button>
     <div class="grow" data-a="editTask" data-id="${t.id}" role="button" tabindex="0">
       <div class="title">${esc(t.title)}</div>
-      <div class="meta">${areaDot(t.areaId)}${esc(areaOf(t.areaId).name)}${g ? ` · 🎯 ${esc(g.title)}` : ''}${t.repeat && t.repeat !== 'none' ? ` · 🔁 ${t.repeat}` : ''}<span class="prio ${prio}">${prio}</span></div>
+      <div class="meta">${areaDot(t.areaId)}${esc(areaOf(t.areaId).name)}${g ? ` · 🎯 ${esc(g.title)}` : ''}${t.src ? ` · 📊 ${esc((S.sheets.find(x => x.id === t.src.sh) || { name: 'sheet' }).name)}` : ''}${t.plan ? ` · 🗓️ ${t.plan.start}` : ''}${t.repeat && t.repeat !== 'none' ? ` · 🔁 ${t.repeat}` : ''}<span class="prio ${prio}">${prio}</span></div>
     </div>
     <div class="right">${t.done ? '' : dueBadge(t.deadline)}<span class="row-tools">${t.done ? '' : starBtn('task', t)}<span class="reward">+${t.minutes}m</span></span></div></div>`;
 }
@@ -1326,7 +1326,7 @@ function vSettings() {
       ${cloud.state === 'on' ? `<button class="btn small" data-a="signOut">Sign out</button>` : ''}
       ${cloud.state !== 'off' && !cloud.fromFile ? `<button class="btn small ghost" data-a="setupCloud">Change settings</button>` : ''}</div></section>
   <section class="card"><div class="card-head"><h2>🔔 Notifications</h2></div>
-    <p class="small">${notif === 'granted' ? (cloud.push ? 'On. Reminders arrive even when the app is closed.' : cloud.state === 'on' ? 'Allowed on this device. Tap “Turn on” to register it for push reminders.' : 'Allowed. Connect and sign in to get reminders when the app is closed.') : notif === 'denied' ? 'Blocked in your browser settings for this site.' : notif === 'unsupported' ? 'This browser does not support notifications. On iPhone, add the app to your home screen first.' : 'Off.'}</p>
+    <p class="small">${notif === 'granted' ? (cloud.push ? 'On. Reminders arrive even when the app is closed.' : cloud.state === 'on' ? 'Allowed on this device. Tap “Turn on” to register it for push reminders.' : 'Allowed. Connect and sign in to get reminders when the app is closed.') : notif === 'denied' ? 'Blocked by your phone or browser. <button class="link small" data-a="notifHelp">How to fix →</button>' : notif === 'unsupported' ? 'This browser does not support notifications. On iPhone, add the app to your home screen first.' : 'Off.'}</p>
     ${runTxt}<p class="small muted">${evCount} reminders scheduled for the next 30 days${cloud.tokenCount ? ` · ${cloud.tokenCount} device${cloud.tokenCount === 1 ? '' : 's'} registered` : ''}.</p>
     <div class="row wrap"><button class="btn small primary" data-a="enableNotif">Turn on for this device</button><button class="btn small" data-a="testNotif">Send a test</button></div></section>
   <section class="card"><div class="card-head"><h2>Reminder rules</h2><button class="btn small" data-a="editReminderRules">Edit</button></div>
@@ -1953,6 +1953,9 @@ function sheetRowCard(sh, r) {
       return `<button class="st st-${statusTone(v)}" data-a="cycleCell" data-id="${r.id}" data-col="${c.id}" title="Tap to change"><small>${esc(c.name)}</small><b>${esc(v)}</b></button>`;
     }).join('')}</div>` : ''}
     ${p.n ? `<div class="srow-prog">${progressBar(p.d / p.n, done ? '#3E9C6E' : '#B94E86')}<span>${p.d}/${p.n}</span></div>` : ''}
+    <div class="srow-foot">${(() => { const lt = S.tasks.filter(t => t.src && t.src.row === r.id); const open = lt.filter(t => !t.done).length;
+      return lt.length ? `<a class="mini-link" href="#tasks">✅ ${lt.length} task${lt.length === 1 ? '' : 's'}${open ? ` · ${open} open` : ' · all done'}</a>` : ''; })()}
+      ${done ? '' : `<button class="mini-btn" data-a="rowTask" data-id="${r.id}">✅ Make task</button>`}</div>
   </article>`;
 }
 function vSheets() {
@@ -1983,6 +1986,7 @@ function vSheets() {
       <div class="small muted">${pr.done} of ${pr.total} rows complete${next ? ` · next deadline ${fmtDate(next.c[dc.id])}` : ''}${goal ? ` · 🎯 ${esc(goal.title)}` : ''}</div></div></div>
       <div class="row wrap sheet-tools">
         <button class="btn small primary" data-a="newRow">＋ Row</button>
+        <button class="btn small" data-a="bulkTasks">✅ Make tasks</button>
         <button class="btn small" data-a="manageCols">📊 Columns</button>
         <button class="btn small" data-a="pasteSheet" data-into="1">📋 Paste rows</button>
         <button class="btn small" data-a="importSheet">📦 Import</button>
@@ -2165,8 +2169,10 @@ const Cloud = (() => {
 
   async function enableNotifications() {
     if (!('Notification' in window)) { toast('Notifications are not available here. On iPhone, add Sankalpa to your home screen first.', '⚠️'); return; }
+    if (window.top !== window.self || !('serviceWorker' in navigator)) { toast('Notifications only work in the installed app, not in this preview', 'ℹ️'); return; }
+    if (Notification.permission === 'denied') { notifHelp(); return; }
     const p = await Notification.requestPermission();
-    if (p !== 'granted') { toast('Notifications were not allowed', '⚠️'); render(); return; }
+    if (p !== 'granted') { notifHelp(); render(); return; }
     if (!user) { toast('Allowed. Reminders will show while Sankalpa is open.', '🔔'); render(); return; }
     await registerPush(true);
   }
@@ -2182,7 +2188,10 @@ const Cloud = (() => {
       localStorage.setItem('bloom_token_' + user.uid, token);
       st.push = true; localStorage.setItem(pushFlagKey(), '1');
       if (loud) { toast('Push reminders are on for this device', '🔔'); render(); }
-    } catch (e) { console.warn(e); if (loud) toast(e.message, '⚠️'); }
+    } catch (e) {
+      console.warn(e);
+      if (loud) { if (/permission-(blocked|default)|NotAllowed|denied/i.test((e.code || '') + ' ' + (e.message || ''))) notifHelp(); else toast(e.message, '⚠️'); }
+    }
   }
 
   function parseConfig(text) {
@@ -2234,6 +2243,29 @@ function vGate() {
   return `<section class="gate"><div class="gate-card"><div class="gate-mandala">${mandalaSVG(150, '#B8913F', .6)}</div>
     <span class="skt">Sankalpa</span><h1>Sankalpa</h1>${body}</div></section>`;
 }
+
+// Shown when Android / Chrome has blocked notifications: the app can't re-ask, so explain where to allow them
+function notifHelp() {
+  const ua = navigator.userAgent, android = /Android/i.test(ua);
+  const apk = document.referrer.startsWith('android-app://') || sessionStorage.getItem('twa') === '1';
+  const site = location.host;
+  const steps = android ? [
+    '📱 Phone <b>Settings → Apps → Sankalpa → Notifications</b> → turn <b>On</b> (and every category inside). If you installed from Chrome, long-press the icon → <b>App info</b> → <b>Notifications</b>.',
+    '📱 Phone <b>Settings → Apps → Chrome → Notifications</b> → turn <b>On</b>.',
+    `🌐 Chrome → ⋮ → <b>Settings → Site settings → Notifications</b> → find <b>${esc(site)}</b> under <i>Blocked</i> → <b>Allow</b>. Also turn off “Use quieter messaging”.`,
+    '🔁 Swipe Sankalpa away from recent apps, open it again, and tap <b>Turn on for this device</b>.',
+    '💡 Using the APK and Sankalpa has no Notifications switch? Rebuild it in PWABuilder with <b>Notification delegation</b> on — or simply open your link in the <b>Chrome browser</b>, sign in and turn notifications on there.',
+  ] : [
+    `🔒 Click the icon left of the address bar (🔒 or ⓘ) → <b>Notifications</b> → <b>Allow</b>.`,
+    '🔁 Reload the page and tap <b>Turn on for this device</b> again.',
+  ];
+  openModal(`<header class="sheet-head"><h2>🔔 Notifications are blocked</h2><button class="icon-btn" data-a="closeModal" aria-label="Close">✕</button></header>
+    <p class="small">Your ${android ? 'phone' : 'browser'} has blocked notifications for Sankalpa, so the app isn't allowed to ask again. Allow them here:</p>
+    <ol class="help-steps">${steps.map(x => `<li>${x}</li>`).join('')}</ol>
+    <p class="small muted">Tip: also set <b>Battery → Unrestricted</b> for Sankalpa and Chrome so reminders arrive on time.</p>
+    <footer class="sheet-foot"><span></span><button class="btn primary" data-a="closeModal">Got it</button></footer>`);
+}
+if (document.referrer.startsWith('android-app://')) sessionStorage.setItem('twa', '1');
 /* Part 4: actions, rendering loop, timers */
 
 const findBy = (arr, id) => arr.find(x => x.id === id);
@@ -2804,7 +2836,12 @@ function tick() {
 async function localNotify(title, body, force) {
   try {
     if (!('Notification' in window)) { if (force) toast('Notifications are not supported here', '⚠️'); return; }
-    if (Notification.permission !== 'granted') { if (force) { const p = await Notification.requestPermission(); if (p !== 'granted') return; } else return; }
+    if (Notification.permission !== 'granted') {
+      if (!force) return;
+      if (window.top !== window.self) { toast('Notifications only work in the installed app, not in this preview', 'ℹ️'); return; }
+      if (Notification.permission === 'denied') { notifHelp(); return; }
+      const p = await Notification.requestPermission(); if (p !== 'granted') { notifHelp(); return; }
+    }
     const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration();
     if (reg) reg.showNotification(title, { body, icon: 'icon-192.png', badge: 'icon-192.png', tag: 'local-' + Date.now() });
     else new Notification(title, { body });
@@ -3431,3 +3468,104 @@ document.addEventListener('change', async e => {
     } catch (err) { toast(err.message || 'Could not read that file', '⚠️'); }
   }
 });
+
+A.notifHelp = notifHelp;
+/* Part 4e: turn sheet rows into tasks (for a day, a week, or a goal) — kept in sync both ways */
+const statusCols = sh => sh.cols.filter(c => c.type === 'status');
+const pendingSteps = (sh, r) => statusCols(sh).filter(c => !isDoneVal(r.c[c.id]) && !isNAVal(r.c[c.id]));
+function whenToDate(when, sh, r, picked) {
+  const t = new Date(); t.setHours(0, 0, 0, 0);
+  if (when === 'today') return dkey(t);
+  if (when === 'tomorrow') return dkey(addDays(t, 1));
+  if (when === 'week') return dkey(addDays(t, 6 - dayIdx(t)));           // this Sunday
+  if (when === 'nextweek') return dkey(addDays(t, 13 - dayIdx(t)));      // next Sunday
+  if (when === 'rowdate') { const dc = sheetDateCol(sh); return (dc && r.c[dc.id]) || picked || dkey(addDays(t, 6 - dayIdx(t))); }
+  return picked || dkey(t);
+}
+function sheetTaskForm(sh, rows) {
+  const anySteps = rows.some(r => pendingSteps(sh, r).length > 1), dc = sheetDateCol(sh);
+  const nSteps = rows.reduce((a, r) => a + Math.max(1, pendingSteps(sh, r).length), 0);
+  openForm({
+    title: rows.length === 1 ? `Make task · ${rowTitle(sh, rows[0])}` : `Make tasks · ${rows.length} rows`,
+    saveLabel: 'Create',
+    fields: [
+      ...(anySteps ? [{ k: 'mode', label: 'Create', type: 'select', options: [['row', rows.length === 1 ? 'One task for this row' : `One task per row (${rows.length})`], ['steps', `One task per pending step (${nSteps})`]], value: 'row' }] : []),
+      { k: 'when', label: 'When', type: 'select', options: [['today', 'Today'], ['tomorrow', 'Tomorrow'], ['week', 'This week (by Sunday)'], ['nextweek', 'Next week'], ...(dc ? [['rowdate', `Row deadline (${dc.name})`]] : []), ['date', 'Pick a date…']], value: 'week' },
+      { k: 'date', label: 'Date (if “Pick a date”)', type: 'date', value: dkey() },
+      { k: 'time', label: 'Time (optional — on a specific day it also goes into your Day planner)', type: 'time', value: '' },
+      { k: 'goalId', label: 'Counts towards goal', type: 'select', options: [['', '— none —'], ...S.goals.filter(g => !g.done).map(g => [g.id, '🎯 ' + g.title])], value: sh.goalId || '' },
+      { k: 'areaId', label: 'Area', type: 'select', options: areaOptions(), value: 'work' },
+      { k: 'priority', label: 'Priority', type: 'select', options: [[1, `Low · ${ER('low')} min`], [2, `Medium · ${ER('med')} min`], [3, `High · ${ER('high')} min`]], value: 2 },
+    ],
+    onSave: v => {
+      const pr = +v.priority, made = [];
+      for (const r of rows) {
+        const date = whenToDate(v.when, sh, r, v.date);
+        const deadline = v.time ? `${date}T${v.time}` : date;
+        const base = { areaId: v.areaId, goalId: v.goalId, priority: pr, minutes: PRIO_MIN[pr], remindBefore: [...S.settings.remindBefore], remindAt: '', repeat: 'none', notes: `From sheet: ${sh.name}`, created: Date.now(), done: false };
+        const steps = v.mode === 'steps' ? pendingSteps(sh, r) : [];
+        const targets = steps.length ? steps.map(c => ({ title: `${c.name}: ${rowTitle(sh, r)}`, col: c.id })) : [{ title: rowTitle(sh, r), col: '' }];
+        for (const tg of targets) {
+          if (S.tasks.some(t => !t.done && t.src && t.src.row === r.id && t.src.col === tg.col)) continue; // already has an open task
+          const t = { id: uid(), title: tg.title, deadline, ...base, src: { sh: sh.id, row: r.id, col: tg.col } };
+          if (v.time && !['week', 'nextweek'].includes(v.when)) t.plan = { date, start: v.time, dur: 60 };
+          S.tasks.push(t); made.push(t);
+        }
+      }
+      toast(made.length ? `Created ${made.length} task${made.length === 1 ? '' : 's'}` : 'Those rows already have open tasks', '✅');
+      return true;
+    } });
+}
+// bulk picker: choose rows (whole week groups at once)
+function bulkPickHTML(sh) {
+  const pend = sh.rows.filter(r => !rowComplete(sh, r)), gcol = sh.cols.find(c => c.id === sh.groupBy);
+  const groups = new Map();
+  pend.forEach(r => { const k = gcol ? String(r.c[gcol.id] || '—') : 'Rows'; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); });
+  const sel = UI.pickRows;
+  return `<header class="sheet-head"><h2>Make tasks from rows</h2><button class="icon-btn" data-a="closeModal" aria-label="Close">✕</button></header>
+    <p class="small muted">Tick the rows to turn into tasks. ${pend.length} pending row${pend.length === 1 ? '' : 's'}.</p>
+    <div class="picker">${[...groups].map(([k, rs]) => `<h3 class="pick-h"><label class="grp-all"><input type="checkbox" data-ch="pickGroup" data-v="${esc(k)}" ${rs.every(r => sel.has(r.id)) ? 'checked' : ''}> ${gcol && gcol.type === 'date' && k !== '—' ? fmtDate(k) : esc(k)} · select all</label></h3>
+      ${rs.map(r => { const ps = pendingSteps(sh, r); return `<label class="pick"><input type="checkbox" data-ch="pickRow" value="${r.id}" ${sel.has(r.id) ? 'checked' : ''}><span class="grow"><b>${esc(rowTitle(sh, r))}</b><small>${ps.length ? 'Pending: ' + esc(ps.map(c => c.name).join(', ')) : 'No status steps'}</small></span></label>`; }).join('')}`).join('')
+      || '<p class="muted">Every row is complete. 🎉</p>'}</div>
+    <footer class="sheet-foot"><span class="small muted">${sel.size} selected</span><button class="btn primary" data-a="bulkNext" ${sel.size ? '' : 'disabled'}>Next →</button></footer>`;
+}
+Object.assign(A, {
+  rowTask(d) { const sh = curSheet(); sheetTaskForm(sh, [findBy(sh.rows, d.id)]); },
+  bulkTasks() { UI.pickRows = new Set(); openModal(bulkPickHTML(curSheet())); },
+  bulkNext() { const sh = curSheet(), rows = sh.rows.filter(r => UI.pickRows.has(r.id)); if (!rows.length) return; closeModal(); setTimeout(() => sheetTaskForm(sh, rows), 220); },
+});
+document.addEventListener('change', e => {
+  const el = e.target, sh = curSheet(); if (!sh || !UI.pickRows) return;
+  if (el.dataset.ch === 'pickRow') { el.checked ? UI.pickRows.add(el.value) : UI.pickRows.delete(el.value); }
+  else if (el.dataset.ch === 'pickGroup') {
+    const gcol = sh.cols.find(c => c.id === sh.groupBy);
+    sh.rows.filter(r => !rowComplete(sh, r) && (gcol ? String(r.c[gcol.id] || '—') : 'Rows') === el.dataset.v).forEach(r => el.checked ? UI.pickRows.add(r.id) : UI.pickRows.delete(r.id));
+  } else return;
+  const sc = $('#modal .picker') ? $('#modal .picker').scrollTop : 0;
+  openModal(bulkPickHTML(sh)); const pk = $('#modal .picker'); if (pk) pk.scrollTop = sc;
+});
+
+// ---- two-way sync ----
+// finishing a task marks its step (or the whole row) Done in the sheet
+const _toggleTask = A.toggleTask;
+A.toggleTask = function (d) {
+  const t = findBy(S.tasks, d.id), wasDone = t && t.done;
+  _toggleTask(d);
+  if (!t || !t.src || wasDone || !t.done) return;
+  const sh = S.sheets.find(x => x.id === t.src.sh), r = sh && findBy(sh.rows, t.src.row); if (!r) return;
+  const cols = t.src.col ? sh.cols.filter(c => c.id === t.src.col) : pendingSteps(sh, r);
+  cols.forEach(c => { if (c.type === 'status') r.c[c.id] = (c.options || STATUS_DEFAULT).find(o => isDoneVal(o)) || 'Done'; });
+  saveLocalOnly(); save({ silent: true });
+};
+// marking a step Done in the sheet completes its task (no double reward)
+function syncTasksFromRow(sh, r) {
+  let changed = false;
+  for (const t of S.tasks) {
+    if (t.done || !t.src || t.src.row !== r.id) continue;
+    const ok = t.src.col ? isDoneVal(r.c[t.src.col]) || isNAVal(r.c[t.src.col]) : rowComplete(sh, r);
+    if (ok) { t.done = true; t.doneAt = Date.now(); S.stats.tasksDone++; changed = true; }
+  }
+  return changed;
+}
+const _cycleCell = A.cycleCell;
+A.cycleCell = function (d) { _cycleCell(d); const sh = curSheet(), r = sh && findBy(sh.rows, d.id); if (r && syncTasksFromRow(sh, r)) save(); };

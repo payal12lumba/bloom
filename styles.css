@@ -936,3 +936,9 @@ details.past { padding: .5rem 0; border-top: 1px solid var(--divider); } details
 .sgroup-h { width: 100%; display: flex; align-items: center; gap: .6rem; border: 0; background: rgba(255, 255, 255, .45); border-radius: 16px 16px 16px 5px; padding: .55rem .8rem; margin-bottom: .6rem; cursor: pointer; font: 800 1rem var(--body); color: var(--wine); }
 .sgroup-h .bar { flex: 1; max-width: 220px; margin: 0 0 0 auto; }
 .sgroup-h .chev { color: var(--gold); width: 1rem; }
+.help-steps { padding-left: 1.2rem; margin: .6rem 0; display: flex; flex-direction: column; gap: .55rem; font-size: .92rem; }
+.help-steps li { padding-left: .2rem; }
+.srow-foot { display: flex; align-items: center; justify-content: flex-end; gap: .5rem; margin-top: .5rem; }
+.srow-foot .mini-link { margin-right: auto; font-size: .78rem; font-weight: 800; color: var(--accent); text-decoration: none; }
+.grp-all { display: flex; align-items: center; gap: .5rem; cursor: pointer; text-transform: none; letter-spacing: 0; font-size: .85rem; color: var(--wine); }
+.grp-all input { width: 18px; height: 18px; accent-color: #B94E86; }
