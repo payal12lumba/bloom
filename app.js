@@ -437,7 +437,7 @@ function earn(min, xp, reason, quiet) {
   S.xp += xp;
   S.rewards.history.unshift({ t: Date.now(), d: min, r: reason });
   S.rewards.history = S.rewards.history.slice(0, 150);
-  if (!quiet) toast(`+${min} min earned`, '✨');
+  if (!quiet && featureOn('rewards')) toast(`+${min} min earned`, '✨');
 }
 function unearn(min, xp, reason) {
   S.rewards.balance = Math.max(0, Math.round((S.rewards.balance - min) * 10) / 10);
@@ -1363,6 +1363,7 @@ const starBtn = (kind, x) => `<button class="tool ${isStar(x) ? 'on' : ''}" data
 
 // ---------- life phase ----------
 function phasePill() {
+  if (!featureOn('phase')) return '';
   const ph = S.phase;
   if (!ph.name) return `<button class="phase-pill empty" data-a="editPhase">🌷 Set your current life phase</button>`;
   const d = ph.until ? Math.ceil((parseDate(ph.until) - Date.now()) / 864e5) : null;
@@ -1650,6 +1651,7 @@ const SHLOKAS = [
   ['18.78', 'yatra yogeśvaraḥ kṛṣṇo yatra pārtho dhanur-dharaḥ · tatra śrīr vijayo bhūtir dhruvā nītir matir mama', 'Where wisdom and committed action meet, there will surely be fortune, victory, growth and right conduct.'],
 ];
 function shlokaCard() {
+  if (!featureOn('shloka')) return '';
   const d = new Date(), idx = (Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 864e5)) % SHLOKAS.length;
   const [ref, sa, en] = SHLOKAS[idx];
   return `<section class="card shloka"><div class="shloka-mandala">${mandalaSVG(220, '#B8913F', 0.35)}</div>
@@ -1670,6 +1672,7 @@ const FEST_TYPES = [['festival', '🪔 Festival'], ['vrat', '🌙 Vrat / fast'],
 const FEST_QUICK = ['Ekadashi', 'Purnima', 'Amavasya', 'Pradosh', 'Sankashti Chaturthi', 'Navratri', 'Dussehra', 'Karva Chauth', 'Diwali', 'Govardhan Puja', 'Bhai Dooj', 'Chhath', 'Makar Sankranti', 'Maha Shivratri', 'Holi', 'Ram Navami', 'Hanuman Jayanti', 'Raksha Bandhan', 'Janmashtami', 'Ganesh Chaturthi'];
 const festEmoji = t => (FEST_TYPES.find(x => x[0] === t) || ['', '✨'])[1].split(' ')[0];
 function festTodayCard() {
+  if (!featureOn('festivals')) return '';
   const k = dkey(), today = S.fest.filter(f => festOn(f, k));
   if (!today.length) return '';
   return `<section class="card fest-today">${today.map(f => `<div class="row-item"><span class="big-e">${festEmoji(f.type)}</span>
@@ -2157,6 +2160,137 @@ function vRewards() {
   </details></section></div></div>`;
 }
 VIEWS.rewards = vRewards;
+/* Part 3h: simplified structure — 5 sections with sub-tabs, a profile menu,
+   a unified Today page and feature switches */
+
+const SECTIONS = [
+  ['today', 'Today', '🪷', [['today', 'Overview'], ['planner', 'Timeline'], ['tasks', 'All tasks']]],
+  ['plan', 'Plan', '🎯', [['goals', 'Goals'], ['review', 'This week'], ['bucket', 'Someday', 'bucket']]],
+  ['sheets', 'Sheets', '📊', [['sheets', 'My sheets'], ['timetable', 'Study'], ['content', 'Content', 'content'], ['lists', 'Lists'], ['ideas', 'Ideas', 'ideas'], ['links', 'Watch later', 'links']]],
+  ['wellbeing', 'Wellbeing', '💗', [['health', 'Health'], ['spaces', 'Sadhana'], ['utsav', 'Festivals', 'festivals']]],
+  ['money', 'Money', '💰', [['money', 'Money']]],
+];
+const PROFILE_PAGES = [['rewards', 'Rewards', '⏳', 'rewards'], ['insights', 'Insights', '📈'], ['settings', 'Settings', '⚙️']];
+const FEATURES = [['rewards', '⏳ Rewards & free-time minutes'], ['shloka', '📖 Shloka of the day'], ['phase', '🌷 Life phase'], ['festivals', '🪔 Festivals & vrat'],
+  ['content', '🎬 Content studio'], ['ideas', '💡 Startup ideas'], ['links', '🔗 Watch later'], ['bucket', '🌈 Someday / bucket list']];
+const featureOn = k => !(S.settings.features && S.settings.features[k] === false);
+const SECTION_OF = {};
+SECTIONS.forEach(s => s[3].forEach(sub => { SECTION_OF[sub[0]] = s[0]; }));
+UI.lastSub = UI.lastSub || {};
+
+function sectionsOrdered() {
+  const ord = (S.layout && S.layout.sections) || [];
+  return [...ord.map(id => SECTIONS.find(s => s[0] === id)).filter(Boolean), ...SECTIONS.filter(s => !ord.includes(s[0]))];
+}
+const subsOf = sec => sec[3].filter(sub => !sub[2] || featureOn(sub[2]));
+const sectionHref = sec => '#' + (UI.lastSub[sec[0]] && subsOf(sec).some(s => s[0] === UI.lastSub[sec[0]]) ? UI.lastSub[sec[0]] : subsOf(sec)[0][0]);
+// bottom bar = the 5 sections
+function navTabs() { return sectionsOrdered().map(s => [s[0], s[1], s[2]]); }
+
+// top of every screen: brand + profile button (phone) and the section's sub-tabs
+function sectionChrome(v) {
+  const secId = SECTION_OF[v], sec = SECTIONS.find(s => s[0] === secId);
+  const initial = (S.settings.name || (Cloud.status().email || '').split('@')[0] || '·').trim().charAt(0).toUpperCase() || '·';
+  const top = `<div class="topbar"><span class="tb-brand">🪷 Sankalpa</span><button class="avatar" data-a="profileMenu" aria-label="Profile, rewards, insights and settings">${esc(initial)}</button></div>`;
+  if (!sec) return top + `<nav class="subnav">${PROFILE_PAGES.filter(p => !p[3] || featureOn(p[3])).map(p => `<a href="#${p[0]}" class="${p[0] === v ? 'on' : ''}">${p[1]}</a>`).join('')}</nav>`;
+  UI.lastSub[secId] = v;
+  const subs = subsOf(sec);
+  return top + (subs.length > 1 ? `<nav class="subnav">${subs.map(s => `<a href="#${s[0]}" class="${s[0] === v ? 'on' : ''}">${s[1]}</a>`).join('')}</nav>` : '');
+}
+function profileMenuHTML() {
+  const c = Cloud.status();
+  return `<header class="sheet-head"><h2>${esc(S.settings.name || 'Your Sankalpa')}</h2><button class="icon-btn" data-a="closeModal" aria-label="Close">✕</button></header>
+    ${c.email ? `<p class="small muted">Signed in as ${esc(c.email)}</p>` : ''}
+    <div class="pmenu">${PROFILE_PAGES.filter(p => !p[3] || featureOn(p[3])).map(p => `<a class="pm-item" href="#${p[0]}" data-a="closeModal"><span>${p[2]}</span>${p[1]}${p[0] === 'rewards' ? `<small>${Math.floor(S.rewards.balance)} min</small>` : ''}</a>`).join('')}
+      <button class="pm-item" data-a="editFeatures"><span>🧩</span>Features on / off</button>
+      ${c.state === 'on' ? `<button class="pm-item" data-a="signOut"><span>👤</span>Sign out</button>` : ''}</div>`;
+}
+function featuresHTML() {
+  return `<header class="sheet-head"><h2>🧩 Features</h2><button class="icon-btn" data-a="closeModal" aria-label="Close">✕</button></header>
+    <p class="small muted">Switch off what you don't use — it disappears from the app. Your data is kept and comes back when you switch it on.</p>
+    <div class="toggles">${FEATURES.map(([k, l]) => `<label class="toggle"><input type="checkbox" data-ch="feature" value="${k}" ${featureOn(k) ? 'checked' : ''}><span class="sw"></span><span>${esc(l)}</span></label>`).join('')}</div>
+    <footer class="sheet-foot"><span></span><button class="btn primary" data-a="closeModal">Done</button></footer>`;
+}
+
+// ---------- unified Today ----------
+function todayList() {
+  const k = dkey(), L = todayLog(k), endToday = parseDate(k);
+  const tasks = S.tasks.filter(t => !t.done && ((t.deadline && parseDate(t.deadline) <= endToday) || (t.plan && t.plan.date === k)))
+    .sort((a, b) => ((a.plan && a.plan.date === k ? toMin(a.plan.start) : 2000) - (b.plan && b.plan.date === k ? toMin(b.plan.start) : 2000)) || ((parseDate(a.deadline) || 9e15) - (parseDate(b.deadline) || 9e15)));
+  const doneToday = S.tasks.filter(t => t.done && t.doneAt && dkey(new Date(t.doneAt)) === k);
+  const habits = S.habits.map(h => { const on = !!L.habits[h.id]; return `<div class="row-item ${on ? 'is-done' : ''}"><button class="check ${on ? 'on' : ''}" style="--c:${areaOf(h.areaId).color}" data-a="habit" data-id="${h.id}" aria-label="Habit done">${on ? '✓' : ''}</button><div class="grow"><div class="title">${h.emoji} ${esc(h.name)}</div><div class="meta">Daily habit</div></div></div>`; });
+  const sad = S.spaces.filter(sp => sp.pinned).flatMap(sp => sp.items.filter(i => i.freq === 'daily').map(it => spaceItemRow(sp, it)));
+  const total = tasks.length + doneToday.length + habits.length + sad.length;
+  const done = doneToday.length + S.habits.filter(h => L.habits[h.id]).length + S.spaces.filter(sp => sp.pinned).flatMap(sp => sp.items.filter(i => i.freq === 'daily')).filter(i => itemDone(i)).length;
+  const grp = (title, arr) => arr.length ? `<div class="tl-group"><h3>${title}</h3><div class="list">${arr.join('')}</div></div>` : '';
+  return `<section class="card"><div class="card-head"><h2>Today's list</h2><span class="small muted">${done}/${total} done</span></div>
+    ${total ? progressBar(total ? done / total : 0) : ''}
+    ${grp('Tasks', tasks.map(taskRow)) + grp('Habits', habits) + grp('Sadhana', sad) || `<p class="muted">Nothing on today's list. Add a task with ＋ or pin a space.</p>`}
+    ${doneToday.length ? `<details><summary class="small muted">Done today (${doneToday.length})</summary><div class="list">${doneToday.map(taskRow).join('')}</div></details>` : ''}
+    <div class="row"><button class="btn small" data-a="newTask">＋ Task</button><a class="btn small ghost" href="#tasks">All tasks</a></div></section>`;
+}
+function nextUp() {
+  const k = dkey(), nowM = new Date().getHours() * 60 + new Date().getMinutes();
+  const items = [
+    ...S.tasks.filter(t => !t.done && t.plan && t.plan.date === k).map(t => ({ start: toMin(t.plan.start), dur: +t.plan.dur || 60, label: t.title, task: true })),
+    ...fixedBlocks(k).map(f => ({ start: f.start, dur: f.dur, label: f.label })),
+  ].filter(x => x.start + x.dur > nowM).sort((a, b) => a.start - b.start).slice(0, 5);
+  return `<section class="card"><div class="card-head"><h2>Next up</h2><a class="link small" href="#planner">Timeline</a></div>
+    ${items.length ? `<ul class="nextup">${items.map(x => `<li class="${x.start <= nowM ? 'now' : ''}"><b>${hhmm(x.start)}</b><span class="grow">${esc(x.label)}</span>${x.start <= nowM ? '<span class="now-tag">now</span>' : `<small>${x.dur} min</small>`}</li>`).join('')}</ul>`
+      : `<p class="muted small">Nothing scheduled for the rest of today. Open the timeline to plan your day.</p>`}</section>`;
+}
+function comingUp() {
+  const end = parseDate(dkey()), soon = upcomingDeadlines(7).filter(x => x.at > end);
+  if (!soon.length) return '';
+  return `<section class="card"><div class="card-head"><h2>Coming up this week</h2></div>
+    <div class="list">${soon.slice(0, 6).map(x => x.kind === 'task' ? taskRow(x.obj) : deadlineRow(x)).join('')}</div></section>`;
+}
+function bodyCard() {
+  const L = todayLog(), st = S.settings, drops = Math.max(st.waterGoal, L.water), moodE = ['😣', '😕', '😐', '🙂', '😄'];
+  return `<section class="card"><div class="card-head"><h2>Body check-in</h2><a class="link small" href="#health">Wellbeing</a></div>
+    <div class="tracker"><div class="t-label">💧 Water <span class="muted">${L.water}/${st.waterGoal}</span></div>
+      <div class="drops">${Array.from({ length: drops }, (_, i) => `<button class="drop ${i < L.water ? 'on' : ''}" data-a="water" data-n="${i + 1}" aria-label="${i + 1} glasses"></button>`).join('')}<button class="mini-btn" data-a="waterPlus">+1</button></div></div>
+    <div class="tracker"><div class="wrap">
+      <button class="pill-btn ${L.sleep ? '' : 'dashed'}" data-a="logSleep">😴 ${L.sleep ? L.sleep.hours + ' h sleep' : 'Log sleep'}</button>
+      <button class="pill-btn ${L.exercise.length ? '' : 'dashed'}" data-a="logWorkout">🏃 ${L.exercise.length ? L.exercise.reduce((a, e) => a + (+e.min || 0), 0) + ' min moved' : 'Log workout'}</button>
+      <button class="pill-btn" data-a="diet" data-k="good">🥗 ${L.diet.good}</button><button class="pill-btn" data-a="diet" data-k="ok">🍛 ${L.diet.ok}</button><button class="pill-btn" data-a="diet" data-k="junk">🍟 ${L.diet.junk}</button></div></div>
+    <div class="tracker"><div class="moods">${moodE.map((m, i) => `<button class="mood ${L.mood === i + 1 ? 'on' : ''}" data-a="mood" data-v="${i + 1}" aria-label="Mood ${i + 1} of 5">${m}</button>`).join('')}</div></div></section>`;
+}
+function vToday() {
+  const st = S.settings, items = dayItems(dkey()), h = new Date().getHours();
+  const greet = h < 5 ? 'Still up' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  const dateTxt = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+  const done = items.filter(i => i.done).length;
+  const head = `<section class="t-head"><div class="grow"><p class="date">${dateTxt}</p><h1>${greet}${st.name ? ', ' + esc(st.name) : ''}</h1>
+      <div class="stat-row"><span class="stat">🔥 <b>${dayStreak()}</b> day streak</span>${featureOn('rewards') ? `<a class="stat" href="#rewards">⏳ <b>${Math.floor(S.rewards.balance)}</b> min</a>` : ''}</div>
+      ${phasePill()}</div>
+    <button class="flower-sm" data-a="editPetals" aria-label="Today's flower: ${done} of ${items.length} done. Tap to choose petals">${flowerSVG(items)}</button></section>`;
+  return (S.rewards.running && featureOn('rewards') ? runningCard() : '') + head + layoutPage('today', [
+    ['fest', 'Festival / vrat today', festTodayCard(), true], ['focus', 'Focus goals', focusBlock(), true],
+    ['list', 'Today\'s list', todayList()], ['next', 'Next up', nextUp()], ['coming', 'Coming up this week', comingUp()],
+    ['prio', 'This week\'s priorities', prioritiesCard()], ['intention', 'Today\'s Sankalpa', intentionCard()],
+    ['body', 'Body check-in', bodyCard()], ['shloka', 'Shloka of the day', shlokaCard()]]) +
+    (UI.editLayout === 'today' ? '' : `<div class="customise"><button class="link small" data-a="lEdit" data-p="today">✎ Customise this page</button></div>`);
+}
+VIEWS.today = vToday;
+
+// ---------- settings: section order + features ----------
+function tabsCard() {
+  const secs = sectionsOrdered();
+  return `<section class="card"><div class="card-head"><h2>📱 Bottom bar</h2></div>
+    <p class="small muted">Change the order of your five sections.</p>
+    <div class="list compact">${secs.map((s, i) => `<div class="row-item"><span class="big-e">${s[2]}</span><div class="grow title">${esc(s[1])}</div>
+      <button class="icon-btn" data-a="secMove" data-id="${s[0]}" data-v="-1" ${i === 0 ? 'disabled' : ''} aria-label="Move up">▲</button>
+      <button class="icon-btn" data-a="secMove" data-id="${s[0]}" data-v="1" ${i === secs.length - 1 ? 'disabled' : ''} aria-label="Move down">▼</button></div>`).join('')}</div></section>`;
+}
+function settingsExtras() {
+  return tabsCard() + `<section class="card"><div class="card-head"><h2>🧩 Features</h2><button class="btn small" data-a="editFeatures">Change</button></div>
+      <p class="small muted">On: ${FEATURES.filter(f => featureOn(f[0])).map(f => f[1].replace(/^\S+\s/, '')).join(', ') || 'none'}.</p></section>
+    ${featureOn('phase') ? `<section class="card"><div class="card-head"><h2>🌷 Current life phase</h2><button class="btn small" data-a="editPhase">Edit</button></div>
+      ${S.phase.name ? `<p><b>${esc(S.phase.emoji)} ${esc(S.phase.name)}</b>${S.phase.until ? ` · until ${fmtDate(S.phase.until)}` : ''}</p>` : '<p class="small muted">Name the season you\'re in, like “JRF year 1 + channel growth”.</p>'}</section>` : ''}
+    <section class="card"><div class="card-head"><h2>🗂️ Your lists</h2></div>
+      <div class="row wrap"><button class="btn small" data-a="manage" data-v="platforms">Content platforms</button><button class="btn small" data-a="manage" data-v="ventures">Startups</button><button class="btn small" data-a="manageCats">Money categories</button></div></section>`;
+}
 /* Part 3b: Firebase sync, Google sign-in, push notifications.
    Each Google account has its own private planner. When sync is set up,
    the app shows a sign-in screen first, so nobody else can see your data. */
@@ -3001,7 +3135,7 @@ function localReminderCheck() {
 }
 
 // ---------- render ----------
-function currentView() { const v = location.hash.slice(1); return VIEWS[v] ? v : 'today'; }
+function currentView() { const v = location.hash.slice(1); return VIEWS[v] && v !== 'more' ? v : 'today'; }
 function render() {
   const main = $('#main');
   document.body.classList.toggle('locked', LOCKED);
@@ -3009,18 +3143,20 @@ function render() {
   if (LOCKED) { main.innerHTML = vGate(); main.dataset.view = 'gate'; document.title = 'Sankalpa'; return; }
   const v = currentView();
   const y = window.scrollY, sameView = main.dataset.view === v;
-  main.innerHTML = iconize(VIEWS[v]());
+  main.innerHTML = iconize(sectionChrome(v) + VIEWS[v]());
+  buildNav();
   main.dataset.view = v;
   if (!sameView) window.scrollTo(0, 0); else window.scrollTo(0, y);
   document.title = `${TITLES[v]} · Sankalpa`;
-  $$('[data-nav]').forEach(a => a.classList.toggle('on', a.dataset.nav === v || (a.dataset.nav === 'more' && !navTabs().some(t => t[0] === v))));
+  $$('[data-nav]').forEach(a => a.classList.toggle('on', a.dataset.nav === (SECTION_OF[v] || v)));
   tick();
 }
 const shown = n => !S.hidden.includes(n[0]);
 function buildNav() {
-  $('#bottomnav').innerHTML = iconize(navTabs().map(n => `<a href="#${n[0]}" data-nav="${n[0]}"><span>${n[2]}</span><small>${n[1]}</small></a>`).join(''));
+  $('#bottomnav').innerHTML = iconize(sectionsOrdered().map(sec => `<a href="${sectionHref(sec)}" data-nav="${sec[0]}"><span>${sec[2]}</span><small>${sec[1]}</small></a>`).join(''));
   $('#sidenav').innerHTML = iconize(`<div class="brand"><span class="brand-mark">🪷</span><b>Sankalpa</b></div>` +
-    [...navTabs().filter(n => n[0] !== 'more'), ...allPages().filter(p => !navTabs().some(t => t[0] === p[0]))].filter(shown).map(n => `<a href="#${n[0]}" data-nav="${n[0]}"><span>${n[2]}</span>${n[1]}</a>`).join(''));
+    sectionsOrdered().map(sec => `<a href="${sectionHref(sec)}" data-nav="${sec[0]}"><span>${sec[2]}</span>${sec[1]}</a>`).join('') +
+    `<div class="side-sep"></div>` + PROFILE_PAGES.filter(p => !p[3] || featureOn(p[3])).map(p => `<a href="#${p[0]}" data-nav="${p[0]}" class="side-sub"><span>${p[2]}</span>${p[1]}</a>`).join(''));
 }
 
 // ---------- events ----------
@@ -3787,4 +3923,17 @@ document.addEventListener('change', e => {
     const off = new Set(S.settings.petalsOff || []); el.checked ? off.delete(el.value) : off.add(el.value);
     S.settings.petalsOff = [...off]; save({ silent: true }); render();
   }
+});
+/* Part 4g: actions for the simplified structure */
+Object.assign(A, {
+  profileMenu() { openModal(profileMenuHTML()); },
+  editFeatures() { closeModal(); setTimeout(() => openModal(featuresHTML()), 200); },
+  secMove(d) {
+    const ids = sectionsOrdered().map(s => s[0]), i = ids.indexOf(d.id), j = i + +d.v; if (j < 0 || j >= ids.length) return;
+    [ids[i], ids[j]] = [ids[j], ids[i]]; S.layout.sections = ids; save();
+  },
+});
+document.addEventListener('change', e => {
+  const el = e.target;
+  if (el.dataset.ch === 'feature') { S.settings.features = S.settings.features || {}; S.settings.features[el.value] = el.checked; save({ silent: true }); render(); }
 });
