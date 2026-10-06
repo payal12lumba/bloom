@@ -330,6 +330,7 @@ function defaultState() {
     contentPlan: { cells: {}, goals: {} }, v3: true,
     fest: [], reviews: {}, intentions: {}, v4: true, onboarded: false,
     sheets: [], v5: true,
+    layout: { tabs: ['today', 'tasks', 'timetable', 'health'], today: { order: [], hidden: [] }, health: { order: [], hidden: [] } },
     settings: {
       name: '', currency: '₹', waterGoal: 8, sleepGoal: 8, weightGoal: '',
       remindBefore: [1440, 60],
@@ -383,6 +384,10 @@ function migrate(s) {
     [s.areas, s.habits, s.spaces, s.platforms, s.ventures, s.rewards.activities, s.lists, s.savings, s.money && s.money.expenseCats, s.money && s.money.incomeCats].forEach(fix);
     s.sheets = s.sheets || []; s.v5 = true;
   }
+  s.layout = s.layout || { tabs: ['today', 'tasks', 'timetable', 'health'] };
+  s.layout.tabs = s.layout.tabs || ['today', 'tasks', 'timetable', 'health'];
+  s.settings.petalsOff = s.settings.petalsOff || [];
+  s.settings.planStep = s.settings.planStep || 60;
   s.settings.earn = { ...Object.fromEntries(EARN_TYPES.map(e => [e[0], e[2]])), ...(s.settings.earn || {}) };
   s.settings.briefing = { morning: '07:00', evening: '21:30', reviewDay: 6, reviewTime: '19:00', ...(s.settings.briefing || {}) };
   s.settings.notify = { ...Object.fromEntries(NOTIFY_TYPES.map(n => [n[0], true])), ...(s.settings.notify || {}) };
@@ -432,10 +437,7 @@ function earn(min, xp, reason, quiet) {
   S.xp += xp;
   S.rewards.history.unshift({ t: Date.now(), d: min, r: reason });
   S.rewards.history = S.rewards.history.slice(0, 150);
-  if (!quiet) toast(`+${min} min earned  ·  +${xp} XP`, '✨');
-  const after = levelOf(S.xp);
-  if (after > before) setTimeout(() => celebrate(`Level ${after}!`, 'You levelled up. Keep blooming.'), 400);
-  checkBadges();
+  if (!quiet) toast(`+${min} min earned`, '✨');
 }
 function unearn(min, xp, reason) {
   S.rewards.balance = Math.max(0, Math.round((S.rewards.balance - min) * 10) / 10);
@@ -455,7 +457,8 @@ function dayItems(key) {
     items.push({ id: 's:' + i.id, label: i.name, emoji: sp.emoji, color: sp.color || '#E3D6F8', done: itemDone(i, key) })));
   S.tasks.filter(t => t.deadline && t.deadline.slice(0, 10) === key).forEach(t =>
     items.push({ id: 't:' + t.id, label: t.title, emoji: '✔️', color: areaOf(t.areaId).color, done: !!t.done }));
-  return items;
+  const off = S.settings.petalsOff || [];
+  return items.filter(i => !off.includes(i.id) && !(i.id.startsWith('t:') && off.includes('tasks')));
 }
 function dayScore(key) {
   const it = dayItems(key); if (!it.length) return 0;
@@ -488,7 +491,9 @@ const BADGES = [
   { id: 'lvl5', e: '🎖️', n: 'Level 5', d: 'Reach level 5', t: () => levelOf(S.xp) >= 5 },
   { id: 'lvl10', e: '🏆', n: 'Level 10', d: 'Reach level 10', t: () => levelOf(S.xp) >= 10 },
 ];
-function checkBadges() {
+function checkBadges() { return; // badges retired: rewards are now minutes + streaks
+}
+function _oldCheckBadges() {
   for (const b of BADGES) {
     if (!S.badges[b.id] && b.t()) {
       S.badges[b.id] = Date.now();
@@ -797,7 +802,7 @@ const MORE = [
   ['spaces', 'My spaces', '🪷', 'Sadhana, self-care, hobbies'],
   ['content', 'Content studio', '🎬', 'Daily, weekly & long-term plan'],
   ['money', 'Money', '💰', 'Income, expenses, budgets, savings'],
-  ['rewards', 'Rewards', '⏳', 'Earned time, levels, badges'],
+  ['rewards', 'Rewards', '⏳', 'Earned free time & streaks'],
   ['review', 'Weekly review', '📝', 'Reflect & choose next week'],
   ['utsav', 'Festivals & vrat', '🪔', 'Your sacred calendar'],
   ['lists', 'To-do lists', '🛒', 'Groceries, meals, errands'],
@@ -823,11 +828,10 @@ function vToday() {
   const k = dkey(), L = todayLog(k), st = S.settings, items = dayItems(k);
   const h = new Date().getHours();
   const greet = h < 5 ? 'Still up' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
-  const lvl = levelOf(S.xp), lo = xpForLevel(lvl), hi = xpForLevel(lvl + 1);
   const dateTxt = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
 
   const hero = `<section class="hero">
-    <div class="flower-wrap">${flowerSVG(items)}</div>
+    <button class="flower-wrap" data-a="editPetals" title="Choose your petals" aria-label="Choose which items are petals">${flowerSVG(items)}</button>
     <div class="hero-text">
       <p class="date">${dateTxt}</p>
       <h1>${greet}${st.name ? ', ' + esc(st.name) : ''}</h1>
@@ -836,7 +840,7 @@ function vToday() {
       <div class="stat-row">
         <span class="stat"><b>🔥 ${dayStreak()}</b> day streak</span>
         <a class="stat link" href="#rewards"><b>⏳ ${Math.floor(S.rewards.balance)}</b> min to spend</a>
-        <span class="stat"><b>Lv ${lvl}</b> ${progressBar((S.xp - lo) / (hi - lo))}</span>
+        ${editLayoutBtn('today')}
       </div>
     </div></section>`;
 
@@ -906,9 +910,20 @@ function vToday() {
     <div class="card-head"><h2>Deadlines this week</h2><button class="link small" data-a="newTask">+ Task</button></div>
     ${soon.length ? `<div class="list">${soon.slice(0, 8).map(x => x.kind === 'task' ? taskRow(x.obj) : deadlineRow(x)).join('')}</div>` : `<p class="muted">No deadlines in the next 7 days.</p>`}</section>`;
 
-  return `${hero}${running}${festTodayCard()}${focusBlock()}${prioritiesCard()}<div class="grid-2"><div class="col">${intentionCard()}${dl}${habits}${ttCard}</div><div class="col">${shlokaCard()}${pinnedSpaces()}${trackers}</div></div>`;
+  return running + layoutPage('today', [
+    ['hero', 'Greeting & flower', hero, true], ['fest', 'Festival / vrat today', festTodayCard(), true], ['focus', 'Focus goals', focusBlock(), true],
+    ['prio', 'This week\'s priorities', prioritiesCard()], ['intention', 'Today\'s Sankalpa', intentionCard()], ['shloka', 'Shloka of the day', shlokaCard()],
+    ['deadlines', 'Deadlines this week', dl], ['habits', 'Daily habits', habits], ['study', 'Study plan today', ttCard],
+    ['spaces', 'Pinned spaces', pinnedSpaces()], ['body', 'Body check-in', trackers]]);
 }
 
+// study timetable cell statuses
+const TT_ST = [['', 'Not started'], ['started', 'Started'], ['done', 'Done'], ['skipped', 'Skipped']];
+const ttStLabel = st => (TT_ST.find(x => x[0] === (st || '')) || TT_ST[0])[1];
+function ttCell(c, attrs, isNow) {
+  const txt = c && c.text, st = (c && c.st) || '';
+  return `<td data-a="editCell" ${attrs} class="${isNow ? 'is-now' : ''} ${txt ? 'tt-' + (st || 'todo') : ''}" ${txt ? `style="background:${softColor(txt)}"` : ''}>${txt ? `<span class="tt-txt">${esc(txt)}</span><span class="tt-st">${st === 'done' ? '✓ ' : ''}${ttStLabel(st)}</span>` : ''}</td>`;
+}
 function slotStart(s) { const m = String(s).match(/(\d{1,2})[:.](\d{2})/); return m ? +m[1] * 60 + +m[2] : -1; }
 function currentSlot(tt) {
   const now = new Date().getHours() * 60 + new Date().getMinutes();
@@ -1007,7 +1022,7 @@ function vHealth() {
   const diet = logs.reduce((a, l) => { if (l.diet) { a.good += l.diet.good; a.ok += l.diet.ok; a.junk += l.diet.junk; } return a; }, { good: 0, ok: 0, junk: 0 });
   const dietTotal = diet.good + diet.ok + diet.junk;
   const moods = logs.map(l => l.mood || 0);
-  return pageHead('Health') + tabs + `<div class="grid-2"><div class="col">
+  return pageHead('Health', '', editLayoutBtn('health')) + tabs + layoutPage('health', [['weight', 'Weight', `
     <section class="card"><div class="card-head"><h2>⚖️ Weight</h2><button class="btn small" data-a="logWeight">Log weight</button></div>
       <div class="stat-row">${cur != null ? `<span class="stat"><b>${cur} kg</b> now</span>` : ''}
         ${st.weightGoal ? `<span class="stat"><b>${st.weightGoal} kg</b> goal</span>` : `<button class="link small" data-a="editBasics">Set a goal weight</button>`}
@@ -1015,17 +1030,15 @@ function vHealth() {
         ${cur != null && st.weightGoal ? `<span class="stat"><b>${Math.abs(cur - st.weightGoal).toFixed(1)} kg</b> to go</span>` : ''}</div>
       ${lineChart(w.slice(-20).map(x => ({ x: x.d, y: x.kg })), { goal: st.weightGoal })}
       ${w.length ? `<details><summary class="small muted">Weight log</summary><div class="list compact">${w.slice().reverse().slice(0, 30).map(x => `<div class="row-item"><div class="grow">${fmtDate(x.d)}</div><b>${x.kg} kg</b><button class="x" data-a="delWeight" data-d="${x.d}" aria-label="Delete">✕</button></div>`).join('')}</div></details>` : ''}
-    </section>
+    </section>`], ['meals', 'Meals this week', `
     <section class="card"><div class="card-head"><h2>🍽️ Meals this week</h2></div>
       ${dietTotal ? `<div class="diet-bar"><span style="flex:${diet.good};background:var(--mint)">🥗 ${diet.good}</span><span style="flex:${diet.ok};background:var(--butter)">🍛 ${diet.ok}</span><span style="flex:${diet.junk};background:var(--blush)">🍟 ${diet.junk}</span></div>
       <p class="small muted">${Math.round(diet.good / dietTotal * 100)}% healthy meals this week.</p>` : '<p class="muted">Tap the meal buttons on Today to track what you eat.</p>'}
-    </section>
-    <section class="card"><div class="card-head"><h2>🫶 Mood this week</h2></div>${barChart(moods, lab, { color: 'var(--blush)', unit: '/5' })}</section>
-  </div><div class="col">
-    <section class="card"><div class="card-head"><h2>💧 Water</h2><span class="muted small">goal ${st.waterGoal}</span></div>${barChart(logs.map(l => l.water || 0), lab, { color: 'var(--sky)', goal: st.waterGoal, unit: ' glasses' })}</section>
-    <section class="card"><div class="card-head"><h2>😴 Sleep</h2><button class="btn small" data-a="logSleep">Log sleep</button></div>${barChart(logs.map(l => l.sleep ? l.sleep.hours : 0), lab, { color: 'var(--lav)', goal: st.sleepGoal, unit: ' h' })}</section>
-    <section class="card"><div class="card-head"><h2>🏃 Exercise minutes</h2><button class="btn small" data-a="logWorkout">Log workout</button></div>${barChart(logs.map(l => (l.exercise || []).reduce((a, e) => a + (+e.min || 0), 0)), lab, { color: 'var(--mint)', unit: ' min' })}</section>
-  </div></div>`;
+    </section>`], ['mood', 'Mood this week', `
+    <section class="card"><div class="card-head"><h2>🫶 Mood this week</h2></div>${barChart(moods, lab, { color: 'var(--blush)', unit: '/5' })}</section>`], ['water', 'Water', `
+    <section class="card"><div class="card-head"><h2>💧 Water</h2><span class="muted small">goal ${st.waterGoal}</span></div>${barChart(logs.map(l => l.water || 0), lab, { color: 'var(--sky)', goal: st.waterGoal, unit: ' glasses' })}</section>`], ['sleep', 'Sleep', `
+    <section class="card"><div class="card-head"><h2>😴 Sleep</h2><button class="btn small" data-a="logSleep">Log sleep</button></div>${barChart(logs.map(l => l.sleep ? l.sleep.hours : 0), lab, { color: 'var(--lav)', goal: st.sleepGoal, unit: ' h' })}</section>`], ['exercise', 'Exercise', `
+    <section class="card"><div class="card-head"><h2>🏃 Exercise minutes</h2><button class="btn small" data-a="logWorkout">Log workout</button></div>${barChart(logs.map(l => (l.exercise || []).reduce((a, e) => a + (+e.min || 0), 0)), lab, { color: 'var(--mint)', unit: ' min' })}</section>`]]);
 }
 function vPeriod() {
   const pi = periodInfo(), len = S.period.periodLen;
@@ -1084,7 +1097,8 @@ function vRewards() {
 
 // ============ MORE ============
 function vMore() {
-  return pageHead('More') + `<div class="tiles">${MORE.filter(m => !S.hidden.includes(m[0])).map(m => `<a class="tile" href="#${m[0]}"><span class="tile-e">${m[2]}</span><b>${m[1]}</b><small>${m[3]}</small></a>`).join('')}</div>`;
+  const tabs = navTabs().map(t => t[0]);
+  return pageHead('More') + `<div class="tiles">${allPages().filter(m => !S.hidden.includes(m[0]) && !tabs.includes(m[0])).map(m => `<a class="tile" href="#${m[0]}"><span class="tile-e">${m[2]}</span><b>${m[1]}</b><small>${m[3]}</small></a>`).join('')}</div>`;
 }
 
 // ============ TIMETABLE ============
@@ -1097,6 +1111,7 @@ function vTimetable() {
       <button class="btn small" data-a="newTT">+ New</button>
       <button class="btn small" data-a="renameTT">Rename</button>
       ${monthly ? `<button class="btn small" data-a="addCol">+ Column</button>` : `<button class="btn small" data-a="addRow">+ Time slot</button>`}
+      ${chips([['status', '👆 Tap = status'], ['edit', '✎ Tap = edit']], UI.ttMode || 'status', 'ttMode')}
       <button class="btn small ${tt.remind ? 'is-on' : ''}" data-a="ttRemind">🔔 ${tt.remind ? (monthly ? `Reminder ${tt.remindTime}` : 'Slot reminders on') : 'Remind me'}</button>
       <button class="btn small" data-a="importTT">Import Excel</button>
       <button class="btn small primary" data-a="exportTT">Export Excel</button>
@@ -1111,7 +1126,7 @@ function vTimetable() {
       const date = new Date(y, m - 1, d), k = dkey(date), wk = dayIdx(date) >= 5;
       rows += `<tr class="${k === today ? 'row-today' : ''} ${wk ? 'weekend' : ''}"><th class="${k === today ? 'is-now' : ''}">${DAYS[dayIdx(date)]} ${d}</th>${tt.cols.map((_, ci) => {
         const c = tt.cells[`${k},${ci}`]; if (c && c.text) filled++;
-        return `<td data-a="editCell" data-k="${k}" data-c="${ci}" class="${k === today ? 'is-now' : ''}" ${c && c.text ? `style="background:${softColor(c.text)}"` : ''}>${esc(c ? c.text : '')}</td>`;
+        return ttCell(c, `data-k="${k}" data-c="${ci}"`, k === today);
       }).join('')}</tr>`;
     }
     return pageHead('Study timetable', 'Monthly planner: one row per date. Tap a cell to plan that day.') + toolbar +
@@ -1124,7 +1139,7 @@ function vTimetable() {
   const rows = tt.slots.map((sl, r) => `<tr><th data-a="editSlot" data-r="${r}" class="${r === cur ? 'is-now' : ''}">${esc(sl)}</th>${tt.days.map((d, c) => {
     const cell = tt.cells[`${r},${c}`], txt = cell && cell.text;
     const isNow = r === cur && d.slice(0, 3).toLowerCase() === today;
-    return `<td data-a="editCell" data-r="${r}" data-c="${c}" class="${isNow ? 'is-now' : ''}" ${txt ? `style="background:${softColor(txt)}"` : ''}>${esc(txt || '')}</td>`;
+    return ttCell(cell, `data-r="${r}" data-c="${c}"`, isNow);
   }).join('')}</tr>`).join('');
   return pageHead('Study timetable', 'Weekly timetable: tap any cell to fill it. The same subject always gets the same colour.') + toolbar +
     `<div class="tt-wrap"><table class="tt">${head}${rows}</table></div>
@@ -1275,7 +1290,7 @@ function vInsights() {
   const areaCounts = S.areas.map(a => [a, monthDone.filter(t => t.areaId === a.id).length]).filter(x => x[1]);
   const maxA = Math.max(1, ...areaCounts.map(x => x[1]));
   const box = (v, l) => `<div class="kpi"><b>${v}</b><span>${l}</span></div>`;
-  return pageHead('Insights') + `<div class="kpis">${box('Lv ' + levelOf(S.xp), S.xp + ' XP total')}${box('🔥 ' + dayStreak(), 'day streak')}${box('💧 ' + waterStreak(), 'water streak')}${box(S.stats.tasksDone, 'tasks done')}${box(S.stats.postsDone, 'posts published')}${box(Object.keys(S.badges).length, 'badges')}</div>
+  return pageHead('Insights') + `<div class="kpis">${box('⏳ ' + Math.floor(S.rewards.balance), 'minutes to spend')}${box('🔥 ' + dayStreak(), 'day streak')}${box('💧 ' + waterStreak(), 'water streak')}${box(S.stats.tasksDone, 'tasks done')}${box(S.stats.postsDone, 'posts published')}</div>
   ${streakCard()}
   <div class="grid-2"><div class="col">
     <section class="card"><div class="card-head"><h2>Daily score, last 14 days</h2></div>${barChart(score, lab, { color: 'var(--lav)', goal: 60, unit: '%' })}<p class="small muted">Dashed line = 60%, the mark that keeps your streak alive.</p></section>
@@ -1465,8 +1480,8 @@ function vSpaces() {
 
 // ---------- settings extras ----------
 function settingsExtras() {
-  const hideable = [...NAV, ...MORE].filter(n => !['today', 'more', 'settings'].includes(n[0]));
-  return `<section class="card"><div class="card-head"><h2>🌷 Current life phase</h2><button class="btn small" data-a="editPhase">Edit</button></div>
+  const hideable = allPages().filter(n => !['today', 'more', 'settings'].includes(n[0]));
+  return tabsCard() + `<section class="card"><div class="card-head"><h2>🌷 Current life phase</h2><button class="btn small" data-a="editPhase">Edit</button></div>
       ${S.phase.name ? `<p><b>${esc(S.phase.emoji)} ${esc(S.phase.name)}</b>${S.phase.until ? ` · until ${fmtDate(S.phase.until)}` : ''}</p>${S.phase.note ? `<p class="small muted">${esc(S.phase.note)}</p>` : ''}` : '<p class="small muted">Name the season you\'re in, like “JRF year 1 + channel growth”. It shows on Today with a countdown.</p>'}
       <p class="small muted">Focus goals: ${S.goals.filter(g => g.focus && !g.done).map(g => esc(g.title)).join(', ') || 'none yet — tap 🎯 on a goal'}</p></section>
     <section class="card"><div class="card-head"><h2>🧩 Sections to show</h2></div>
@@ -1712,41 +1727,63 @@ function vReview() {
   ${past.length ? `<section class="card"><div class="card-head"><h2>Past reviews</h2></div>${past.slice(0, 12).map(k => `<details class="past"><summary><b>Week of ${fmtDate(k)}</b> ${'🪷'.repeat(S.reviews[k].rating || 0)}</summary>${REVIEW_Q.map(([q, lbl]) => S.reviews[k][q] ? `<p><b>${lbl}</b><br>${esc(S.reviews[k][q])}</p>` : '').join('')}</details>`).join('')}</section>` : ''}`;
 }
 
-// ---------- day planner (drag tasks into time blocks) ----------
-const PLAN_HOURS = Array.from({ length: 19 }, (_, i) => i + 5); // 05:00 – 23:00
+// ---------- day planner (zoomable timeline, drag or type tasks) ----------
+const PLAN_START = 5 * 60, PLAN_END = 23 * 60, ROW_H = 40;
+const PLAN_STEPS = [[60, '1 h'], [30, '30 min'], [15, '15 min'], [10, '10 min']];
+const hhmm = m => `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
 function fixedBlocks(k) {
   const [y, m, d] = k.split('-').map(Number), date = new Date(y, m - 1, d), di = dayIdx(date), out = [];
   for (const tt of S.timetables) {
     if (tt.type === 'monthly') continue;
     const col = tt.days.findIndex(dn => dn.slice(0, 3).toLowerCase() === DAYS[di].toLowerCase()); if (col < 0) continue;
-    tt.slots.forEach((sl, r) => { const c = tt.cells[`${r},${col}`], mm = slotStart(sl); if (c && c.text && mm >= 0) out.push({ h: Math.floor(mm / 60), label: '📚 ' + c.text, time: sl }); });
+    tt.slots.forEach((sl, r) => {
+      const c = tt.cells[`${r},${col}`], a = slotStart(sl); if (!c || !c.text || a < 0) return;
+      const parts = String(sl).split(/[–\-]|to/); let b2 = parts[1] ? slotStart(parts[1]) : -1; if (b2 <= a) b2 = a + 60;
+      out.push({ start: a, dur: b2 - a, label: '📚 ' + c.text + (c.st ? ' · ' + ttStLabel(c.st) : '') });
+    });
   }
-  for (const sp of S.spaces) for (const it of sp.items) if (it.time && (it.freq === 'daily' || (it.freq === 'weekly' && +it.day === di))) out.push({ h: +it.time.slice(0, 2), label: sp.emoji + ' ' + it.name, time: it.time });
-  for (const r of S.settings.routines) if (r.days.includes(di)) out.push({ h: +r.time.slice(0, 2), label: r.label, time: r.time });
+  for (const sp of S.spaces) for (const it of sp.items) if (it.time && (it.freq === 'daily' || (it.freq === 'weekly' && +it.day === di))) out.push({ start: toMin(it.time), dur: 20, label: sp.emoji + ' ' + it.name });
+  for (const r of S.settings.routines) if (r.days.includes(di)) out.push({ start: toMin(r.time), dur: 20, label: r.label });
   return out;
 }
+// place overlapping blocks side by side
+function lanes(items) {
+  items.sort((a, b) => a.start - b.start); const ends = [];
+  for (const it of items) { let l = ends.findIndex(e => e <= it.start); if (l < 0) { l = ends.length; ends.push(0); } ends[l] = it.start + it.dur; it.lane = l; }
+  items.forEach(it => { it.lanes = Math.max(1, ...items.filter(o => o.start < it.start + it.dur && it.start < o.start + o.dur).map(o => o.lane + 1)); });
+  return items;
+}
 function vPlannerDay() {
-  const k = UI.planDate, [y, m, d] = k.split('-').map(Number), date = new Date(y, m - 1, d);
+  const k = UI.planDate, [y, m, d] = k.split('-').map(Number), date = new Date(y, m - 1, d), step = +S.settings.planStep || 60;
   const label = date.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
   const pool = S.tasks.filter(t => !t.done && !(t.plan && t.plan.date === k))
-    .sort((a, b) => (isStar(b) - isStar(a)) || ((parseDate(a.deadline) || 9e15) - (parseDate(b.deadline) || 9e15))).slice(0, 24);
-  const planned = S.tasks.filter(t => t.plan && t.plan.date === k), fixed = fixedBlocks(k);
-  const nowH = k === dkey() ? new Date().getHours() : -1;
-  const rows = PLAN_HOURS.map(h => {
-    const hh = `${pad(h)}:00`, mine = planned.filter(t => +t.plan.start.slice(0, 2) === h), fx = fixed.filter(f => f.h === h);
-    return `<div class="slot ${h === nowH ? 'now' : ''} ${UI.pickTask ? 'pickable' : ''}" data-slot="${hh}" ${UI.pickTask ? `data-a="placeTask" data-v="${hh}"` : ''}>
-      <span class="slot-h">${hh}</span><div class="slot-body">
-      ${fx.map(f => `<span class="blk fixed">${esc(f.label)}</span>`).join('')}
-      ${mine.map(t => `<button class="blk task ${t.done ? 'done' : ''}" data-a="editBlock" data-id="${t.id}" style="--h:${Math.max(1, (t.plan.dur || 60) / 60)}">${t.done ? '✓ ' : ''}${esc(t.title)}<small>${t.plan.start} · ${t.plan.dur || 60} min</small></button>`).join('')}
-      </div></div>`;
+    .sort((a, b) => (isStar(b) - isStar(a)) || ((parseDate(a.deadline) || 9e15) - (parseDate(b.deadline) || 9e15))).slice(0, 30);
+  const px = ROW_H / step, H = (PLAN_END - PLAN_START) * px;
+  const blocks = lanes([
+    ...fixedBlocks(k).map(f => ({ ...f, fixed: true })),
+    ...S.tasks.filter(t => t.plan && t.plan.date === k).map(t => ({ start: toMin(t.plan.start), dur: +t.plan.dur || 60, t })),
+  ].filter(b => b.start + b.dur > PLAN_START && b.start < PLAN_END));
+  let rows = '';
+  for (let mm = PLAN_START; mm < PLAN_END; mm += step) rows += `<div class="tl-row ${mm % 60 === 0 ? 'hour' : ''}" style="height:${ROW_H}px" data-slot="${hhmm(mm)}" data-a="${UI.pickTask ? 'placeTask' : 'slotTask'}" data-v="${hhmm(mm)}"><span class="tl-h">${mm % 60 === 0 || step <= 15 ? hhmm(mm) : ''}</span></div>`;
+  const now = new Date(), nowM = now.getHours() * 60 + now.getMinutes();
+  const nowLine = k === dkey() && nowM > PLAN_START && nowM < PLAN_END ? `<div class="tl-now" style="top:${(nowM - PLAN_START) * px}px"><i></i></div>` : '';
+  const blkHTML = blocks.map(b => {
+    const top = (Math.max(b.start, PLAN_START) - PLAN_START) * px, h = Math.max(22, b.dur * px - 3), w = 100 / b.lanes;
+    const pos = `top:${top}px;height:${h}px;left:calc(56px + (100% - 60px) * ${b.lane * w / 100});width:calc((100% - 60px) * ${w / 100} - 4px)`;
+    if (b.fixed) return `<div class="blk fixed" style="${pos}">${esc(b.label)}<small>${hhmm(b.start)}</small></div>`;
+    const t = b.t;
+    return `<button class="blk task ${t.done ? 'done' : ''}" style="${pos}" data-drag="${t.id}" data-a="editBlock" data-id="${t.id}">${t.done ? '✓ ' : ''}${esc(t.title)}<small>${t.plan.start}–${hhmm(toMin(t.plan.start) + (+t.plan.dur || 60))} · ${t.plan.dur || 60} min</small></button>`;
   }).join('');
-  return pageHead('Day planner', 'Drag a task onto an hour — or tap a task, then tap an hour.', `<button class="btn primary" data-a="newTask">+ Task</button>`) + `
+  return pageHead('Day planner', 'Drag a task onto the timeline, tap a task then a time, or tap any empty time to type a task there.') + `
   <div class="month-nav"><button class="icon-btn" data-a="planDay" data-v="-1" aria-label="Previous day">‹</button><h2>${label}</h2><button class="icon-btn" data-a="planDay" data-v="1" aria-label="Next day">›</button>${k !== dkey() ? '<button class="btn small ghost" data-a="planDay" data-v="0">Today</button>' : ''}</div>
+  <div class="split-row">${chips(PLAN_STEPS.map(([v, l]) => [v, '🔎 ' + l]), step, 'planStep')}</div>
   <div class="planner">
     <section class="card pool"><div class="card-head"><h2>To schedule</h2><span class="small muted">${pool.length}</span></div>
-      <div class="pool-chips">${pool.map(t => `<button class="pchip ${UI.pickTask === t.id ? 'picked' : ''}" data-drag="${t.id}" data-a="pickTask" data-id="${t.id}" style="--c:${areaOf(t.areaId).color}">${isStar(t) ? '⭐ ' : ''}${esc(t.title)}${t.deadline ? `<small>${countdown(t.deadline).txt}</small>` : ''}</button>`).join('') || '<p class="muted small">No open tasks. Add one with + Task.</p>'}</div>
-      ${UI.pickTask ? '<p class="small gold">Now tap an hour on the timeline.</p>' : ''}</section>
-    <section class="card timeline">${rows}</section>
+      <form class="add-row" data-submit="planType"><input id="planIn" placeholder="Type a task… e.g. 10:30 Revise enzymes 45m" autocomplete="off"><button class="btn primary small">Add</button></form>
+      <p class="small muted">Start with a time to place it straight on the timeline; end with a length like 45m or 1.5h.</p>
+      <div class="pool-chips">${pool.map(t => `<button class="pchip ${UI.pickTask === t.id ? 'picked' : ''}" data-drag="${t.id}" data-a="pickTask" data-id="${t.id}" style="--c:${areaOf(t.areaId).color}">${isStar(t) ? '⭐ ' : ''}${esc(t.title)}${t.deadline ? `<small>${countdown(t.deadline).txt}</small>` : ''}</button>`).join('') || '<p class="muted small">Nothing waiting. Type a task above.</p>'}</div>
+      ${UI.pickTask ? '<p class="small gold">Now tap a time on the timeline.</p>' : ''}</section>
+    <section class="card timeline"><div class="tl-body" style="height:${H}px" data-step="${step}">${rows}${blkHTML}${nowLine}</div></section>
   </div>`;
 }
 
@@ -1817,9 +1854,10 @@ VIEWS.utsav = vUtsav; VIEWS.review = vReview; VIEWS.planner = vPlannerDay;
 (function paintDecor() {
   const el = document.getElementById('decor'); if (!el) return;
   const blob = (x, y, s, c, o) => `<svg style="${x};${y}" width="${s}" height="${s}" viewBox="0 0 200 200"><path fill="${c}" fill-opacity="${o}" d="M43.1,-58.6C55.5,-50.1,64.6,-36.4,69.5,-21.2C74.4,-6,75.1,10.7,68.9,24.5C62.7,38.3,49.6,49.2,35.1,57.6C20.6,66,4.7,71.9,-11.9,71.4C-28.5,70.9,-45.8,64,-56.6,51.4C-67.4,38.8,-71.7,20.4,-70.7,3C-69.7,-14.4,-63.4,-30.8,-52.2,-40.1C-41,-49.4,-24.9,-51.6,-9.6,-55.3C5.7,-59,30.7,-67.1,43.1,-58.6Z" transform="translate(100 100)"/></svg>`;
-  el.innerHTML = blob('left:-90px', 'top:140px', 360, '#F4C4DA', .55) + blob('right:-120px', 'top:-80px', 420, '#D8C8F4', .55) + blob('right:10%', 'bottom:-140px', 400, '#F7DCC4', .6) +
-    `<div class="mandala" style="right:-140px;top:-140px">${mandalaSVG(460, '#B8913F', .28)}</div><div class="mandala" style="left:-160px;bottom:-160px">${mandalaSVG(520, '#B8913F', .22)}</div>` +
-    `<div style="position:absolute;left:46%;top:22%;opacity:.5">${lotusIcon(34, '#B8913F')}</div><div style="position:absolute;left:12%;top:70%;opacity:.4">${lotusIcon(26, '#B8913F')}</div>`;
+  el.innerHTML = blob('left:-90px', 'top:140px', 360, '#E9B98E', .28) + blob('right:-120px', 'top:-80px', 420, '#D9A8A0', .25) + blob('right:10%', 'bottom:-140px', 400, '#C9B08A', .3) +
+    `<div class="mandala" style="right:-150px;top:-150px">${mandalaSVG(480, '#8A5A1E', .3)}</div><div class="mandala" style="left:-170px;bottom:-170px">${mandalaSVG(540, '#8A5A1E', .25)}</div>` +
+    `<div style="position:absolute;left:46%;top:22%;opacity:.45">${lotusIcon(34, '#8A5A1E')}</div><div style="position:absolute;left:12%;top:70%;opacity:.4">${lotusIcon(26, '#8A5A1E')}</div>` +
+    `<div style="position:absolute;right:9%;top:62%;opacity:.35">${lotusIcon(30, '#8E2C3A')}</div>`;
 })();
 /* Part 3f: Sheets — Excel-style trackers with custom columns, shown as cards */
 
@@ -2031,6 +2069,94 @@ function goalExtra(g) {
   return { d, n };
 }
 VIEWS.sheets = vSheets;
+/* Part 3g: customisable layouts (rearrange / hide sections), bottom-bar tabs, petals, simplified rewards */
+
+Object.assign(UI, { editLayout: null });
+const PAGE_INFO = {
+  today: ['Today', '🪷', 'Your day at a glance'], tasks: ['Tasks', '✅', 'To-dos with deadlines'],
+  timetable: ['Study', '📚', 'Weekly & monthly study plan'], health: ['Health', '💗', 'Water, sleep, weight, cycle'],
+};
+const allPages = () => [...Object.entries(PAGE_INFO).map(([id, v]) => [id, v[0], v[1], v[2]]), ...MORE];
+const pageById = id => allPages().find(p => p[0] === id);
+function navTabs() {
+  const tabs = ((S.layout && S.layout.tabs) || ['today', 'tasks', 'timetable', 'health']).filter(id => pageById(id) && !S.hidden.includes(id)).slice(0, 4);
+  return [...tabs.map(id => { const p = pageById(id); return [id, PAGE_INFO[id] ? PAGE_INFO[id][0] : p[1], p[2]]; }), ['more', 'More', '✨']];
+}
+
+// ---------- rearrangeable page sections ----------
+// blocks: [id, label, html, wide?]
+function layoutPage(page, blocks) {
+  const L = S.layout[page] = S.layout[page] || { order: [], hidden: [] };
+  const ids = [...L.order.filter(id => blocks.some(b => b[0] === id)), ...blocks.map(b => b[0]).filter(id => !L.order.includes(id))];
+  const edit = UI.editLayout === page, shown = ids.filter(id => !L.hidden.includes(id));
+  const body = shown.map((id, i) => {
+    const b = blocks.find(x => x[0] === id); if (!b[2] && !edit) return '';
+    const bar = edit ? `<div class="lbar"><span class="lname">⠿ ${esc(b[1])}</span>
+      <button class="lbtn" data-a="lMove" data-p="${page}" data-id="${id}" data-v="-1" ${i === 0 ? 'disabled' : ''} aria-label="Move up">▲</button>
+      <button class="lbtn" data-a="lMove" data-p="${page}" data-id="${id}" data-v="1" ${i === shown.length - 1 ? 'disabled' : ''} aria-label="Move down">▼</button>
+      <button class="lbtn hide" data-a="lHide" data-p="${page}" data-id="${id}" aria-label="Remove from page">✕</button></div>` : '';
+    return `<div class="lblock ${b[3] ? 'wide' : ''} ${edit ? 'editing' : ''}" data-block="${id}">${bar}${b[2] || (edit ? `<div class="lempty">Shows up when there's something to show</div>` : '')}</div>`;
+  }).join('');
+  const hidden = ids.filter(id => L.hidden.includes(id));
+  const tray = edit ? `<section class="card ltray"><div class="card-head"><h2>Hidden sections</h2><button class="btn small primary" data-a="lDone">Done</button></div>
+    ${hidden.length ? `<div class="row wrap">${hidden.map(id => `<button class="chip" data-a="lShow" data-p="${page}" data-id="${id}">＋ ${esc(blocks.find(b => b[0] === id)[1])}</button>`).join('')}</div>` : '<p class="small muted">Nothing hidden. Tap ✕ on a section to remove it from this page.</p>'}
+    <button class="link small" data-a="lReset" data-p="${page}">Reset to default layout</button></section>` : '';
+  const banner = edit ? `<div class="lbanner">✎ Editing layout — use ▲ ▼ to move sections, ✕ to remove them. <button class="btn small primary" data-a="lDone">Done</button></div>` : '';
+  return `${banner}<div class="layout ${edit ? 'is-editing' : ''}">${body}</div>${tray}`;
+}
+const editLayoutBtn = page => `<button class="btn small ghost" data-a="lEdit" data-p="${page}">✎ Edit layout</button>`;
+
+// ---------- petals: choose what counts ----------
+function petalCandidates() {
+  const out = [];
+  S.habits.forEach(h => out.push(['h:' + h.id, `${h.emoji} ${h.name}`]));
+  out.push(['water', '💧 Water goal'], ['exercise', '🏃 Move your body'], ['sleep', '😴 Sleep logged'], ['tasks', '✅ Tasks due today']);
+  S.spaces.filter(sp => sp.pinned).forEach(sp => sp.items.filter(i => i.freq === 'daily').forEach(i => out.push(['s:' + i.id, `${sp.emoji} ${i.name}`])));
+  return out;
+}
+function petalsHTML() {
+  const off = S.settings.petalsOff || [];
+  return `<header class="sheet-head"><h2>🌸 Your petals</h2><button class="icon-btn" data-a="closeModal" aria-label="Close">✕</button></header>
+    <p class="small muted">Each ticked item is one petal in today's flower and counts towards your streak.</p>
+    <div class="toggles">${petalCandidates().map(([id, l]) => `<label class="toggle"><input type="checkbox" data-ch="petal" value="${esc(id)}" ${off.includes(id) ? '' : 'checked'}><span class="sw"></span><span>${esc(l)}</span></label>`).join('')}</div>
+    <p class="small muted">Add more petals by adding daily habits (Settings) or pinning a space with daily items (My spaces).</p>
+    <footer class="sheet-foot"><span></span><button class="btn primary" data-a="closeModal">Done</button></footer>`;
+}
+
+// ---------- bottom bar ----------
+function tabsCard() {
+  const tabs = navTabs().filter(t => t[0] !== 'more'), others = allPages().filter(p => !tabs.some(t => t[0] === p[0]) && !S.hidden.includes(p[0]));
+  return `<section class="card"><div class="card-head"><h2>📱 Bottom bar</h2><span class="small muted">${tabs.length}/4 tabs</span></div>
+    <div class="list compact">${tabs.map((t, i) => `<div class="row-item"><span class="big-e">${t[2]}</span><div class="grow title">${esc(t[1])}</div>
+      <button class="icon-btn" data-a="tabMove" data-id="${t[0]}" data-v="-1" ${i === 0 ? 'disabled' : ''} aria-label="Move left">▲</button>
+      <button class="icon-btn" data-a="tabMove" data-id="${t[0]}" data-v="1" ${i === tabs.length - 1 ? 'disabled' : ''} aria-label="Move right">▼</button>
+      <button class="icon-btn" data-a="tabRemove" data-id="${t[0]}" ${tabs.length < 2 ? 'disabled' : ''} aria-label="Remove">✕</button></div>`).join('')}</div>
+    ${tabs.length < 4 ? `<div class="field"><label for="tabAdd">Add a tab</label><select id="tabAdd" data-ch="tabAdd"><option value="">Choose…</option>${others.map(p => `<option value="${p[0]}">${p[2]} ${esc(p[1])}</option>`).join('')}</select></div>` : '<p class="small muted">Remove a tab to add a different one. Everything else stays under More.</p>'}</section>`;
+}
+
+// ---------- simplified rewards: minutes wallet + streaks ----------
+function vRewards() {
+  const R = S.rewards, today = dkey();
+  const todays = R.history.filter(h => dkey(new Date(h.t)) === today);
+  const earnedToday = todays.filter(h => h.d > 0).reduce((a, h) => a + h.d, 0), spentToday = -todays.filter(h => h.d < 0).reduce((a, h) => a + h.d, 0);
+  return pageHead('Rewards', 'Earn free time by showing up for yourself, then spend it guilt-free.') + `
+  <section class="card wallet"><div><div class="big-num">${Math.floor(R.balance)}<small> min</small></div><p>ready to spend</p></div>
+    <div class="stat-row"><span class="stat"><b>+${Math.round(earnedToday)}</b> earned today</span><span class="stat"><b>${Math.round(spentToday)}</b> spent today</span><span class="stat"><b>🔥 ${dayStreak()}</b> day streak</span></div></section>
+  ${R.running ? runningCard() : ''}
+  <div class="grid-2"><div class="col">
+  <section class="card"><div class="card-head"><h2>Spend your minutes</h2><button class="link small" data-a="newActivity">＋ Add</button></div>
+    <div class="acts">${R.activities.map(a => `<div class="act"><span class="act-e">${a.emoji}</span><span class="grow">${esc(a.name)}</span>
+      <button class="icon-btn" data-a="editActivity" data-id="${a.id}" aria-label="Edit">✎</button>
+      <button class="btn ${R.running ? '' : 'primary'} small" data-a="startActivity" data-id="${a.id}" ${R.running ? 'disabled' : ''}>Start</button></div>`).join('')}</div>
+    <div class="row"><button class="btn small" data-a="adjustMinutes">± Adjust minutes</button></div></section>
+  </div><div class="col">
+  <section class="card"><div class="card-head"><h2>How you earn</h2><button class="btn small" data-a="editEarn">✎ Edit rates</button></div>
+    <ul class="earn">${EARN_TYPES.map(([k, l]) => `<li><span>${l.split(' ')[0]}</span><span class="grow">${esc(l.slice(l.indexOf(' ') + 1))}</span><b>${ER(k)} min</b></li>`).join('')}</ul></section>
+  <section class="card"><details><summary><b>History</b> <span class="small muted">last 25</span></summary>
+    ${R.history.length ? `<div class="list compact">${R.history.slice(0, 25).map(h => `<div class="row-item"><div class="grow small">${esc(h.r)}<div class="meta">${new Date(h.t).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</div></div><b class="${h.d >= 0 ? 'plus' : 'minus'}">${h.d >= 0 ? '+' : ''}${h.d} min</b></div>`).join('')}</div>` : '<p class="muted">Nothing yet.</p>'}
+  </details></section></div></div>`;
+}
+VIEWS.rewards = vRewards;
 /* Part 3b: Firebase sync, Google sign-in, push notifications.
    Each Google account has its own private planner. When sync is set up,
    the app shows a sign-in screen first, so nobody else can see your data. */
@@ -2464,12 +2590,20 @@ const A = {
   },
   renameTT() { const t = curTT(); ask('Rename timetable', 'Name', t.name).then(n => { if (n) { t.name = n; save(); } }); },
   async delTT() { const t = curTT(); if (await confirmBox(`Delete timetable “${t.name}”?`)) { S.timetables = S.timetables.filter(x => x !== t); S.activeTT = S.timetables[0]?.id; save(); } },
+  ttMode(d) { UI.ttMode = d.v; render(); },
   editCell(d) {
-    const t = curTT(), key = d.k ? `${d.k},${d.c}` : `${d.r},${d.c}`, cur = t.cells[key]?.text || '';
+    const t = curTT(), key = d.k ? `${d.k},${d.c}` : `${d.r},${d.c}`, cell = t.cells[key], cur = cell?.text || '';
+    if (cur && (UI.ttMode || 'status') === 'status') {          // tap cycles the status
+      const i = TT_ST.findIndex(x => x[0] === (cell.st || '')), nx = TT_ST[(i + 1) % TT_ST.length][0];
+      cell.st = nx; if (!nx) delete cell.st;
+      if (nx === 'done') earn(ER('plan'), 6, 'Studied: ' + cur, true);
+      save(); toast(`${cur}: ${ttStLabel(nx)}`, nx === 'done' ? '✅' : '📚'); return;
+    }
     openForm({
       title: d.k ? `${fmtDate(d.k)} · ${t.cols[d.c]}` : `${t.days[d.c]} · ${t.slots[d.r]}`,
-      fields: [{ k: 'text', label: 'Subject or topic', value: cur, placeholder: 'e.g. Biochemistry — enzymes', hint: 'Leave empty to clear the cell.' }],
-      onSave: v => { if (v.text) t.cells[key] = { text: v.text }; else delete t.cells[key]; return true; },
+      fields: [{ k: 'text', label: 'Subject or topic', value: cur, placeholder: 'e.g. Biochemistry — enzymes', hint: 'Leave empty to clear the cell.' },
+        { k: 'st', label: 'Status', type: 'select', options: TT_ST, value: cell?.st || '' }],
+      onSave: v => { if (v.text) { t.cells[key] = { text: v.text }; if (v.st) t.cells[key].st = v.st; } else delete t.cells[key]; return true; },
       saveLabel: 'Save',
     });
   },
@@ -2714,9 +2848,9 @@ async function exportTimetable() {
     if (t.type === 'monthly') {
       const [y, m] = t.month.split('-').map(Number), dim = new Date(y, m, 0).getDate();
       aoa = [['Date', ...t.cols]];
-      for (let d = 1; d <= dim; d++) { const k = dkey(new Date(y, m - 1, d)); aoa.push([k, ...t.cols.map((_, c) => t.cells[`${k},${c}`]?.text || '')]); }
+      for (let d = 1; d <= dim; d++) { const k = dkey(new Date(y, m - 1, d)); aoa.push([k, ...t.cols.map((_, c) => ttExport(t.cells[`${k},${c}`]))]); }
       fname += ' ' + t.month;
-    } else aoa = [['Time', ...t.days], ...t.slots.map((s, r) => [s, ...t.days.map((_, c) => t.cells[`${r},${c}`]?.text || '')])];
+    } else aoa = [['Time', ...t.days], ...t.slots.map((s, r) => [s, ...t.days.map((_, c) => ttExport(t.cells[`${r},${c}`]))])];
     const ws = XLSX.utils.aoa_to_sheet(aoa); ws['!cols'] = [{ wch: 14 }, ...aoa[0].slice(1).map(() => ({ wch: 22 }))];
     const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, t.name.slice(0, 30) || 'Timetable');
     XLSX.writeFile(wb, `${fname}.xlsx`);
@@ -2734,17 +2868,25 @@ async function importTimetable(file) {
     if (/^date/i.test(String(clean[0][0]).trim())) {
       const cols = clean[0].slice(1).map(String).map(s => s.trim()).filter(Boolean);
       const t = { id: uid(), name, type: 'monthly', month: '', cols, cells: {}, remind: false, remindTime: '07:30' };
-      clean.slice(1).forEach(r => { const k = normDate(r[0]); if (!k) return; if (!t.month) t.month = k.slice(0, 7); cols.forEach((_, c) => { const v = String(r[c + 1] ?? '').trim(); if (v) t.cells[`${k},${c}`] = { text: v }; }); });
+      clean.slice(1).forEach(r => { const k = normDate(r[0]); if (!k) return; if (!t.month) t.month = k.slice(0, 7); cols.forEach((_, c) => { const v = String(r[c + 1] ?? '').trim(); if (v) t.cells[`${k},${c}`] = ttImport(v); }); });
       t.month = t.month || dkey().slice(0, 7);
       S.timetables.push(t); S.activeTT = t.id; save(); toast(`Imported monthly plan “${name}”`, '🗓️'); return;
     }
     const days = clean[0].slice(1).map(String).map(s => s.trim()).filter(Boolean);
     const t = { id: uid(), name, type: 'weekly', days, slots: [], cells: {}, remind: false };
-    clean.slice(1).forEach((r, ri) => { t.slots.push(String(r[0]).trim() || `Slot ${ri + 1}`); days.forEach((_, c) => { const v = String(r[c + 1] ?? '').trim(); if (v) t.cells[`${ri},${c}`] = { text: v }; }); });
+    clean.slice(1).forEach((r, ri) => { t.slots.push(String(r[0]).trim() || `Slot ${ri + 1}`); days.forEach((_, c) => { const v = String(r[c + 1] ?? '').trim(); if (v) t.cells[`${ri},${c}`] = ttImport(v); }); });
     S.timetables.push(t); S.activeTT = t.id; save(); toast(`Imported “${t.name}”`, '📅');
   } catch (e) { toast(e.message || 'Could not read that file', '⚠️'); }
 }
 
+// "Biochemistry — Done" in Excel  <->  { text, st } in the app
+const ttExport = c => !c || !c.text ? '' : c.st ? `${c.text} — ${ttStLabel(c.st)}` : `${c.text} — Not started`;
+function ttImport(v) {
+  const m = v.match(/^(.*?)\s+[—–-]\s+(not started|started|in progress|done|completed|skipped)$/i);
+  if (!m) return { text: v };
+  const w = m[2].toLowerCase(), st = w === 'done' || w === 'completed' ? 'done' : w === 'skipped' ? 'skipped' : w === 'not started' ? '' : 'started';
+  return st ? { text: m[1], st } : { text: m[1] };
+}
 function normDate(v) {
   const s = String(v ?? '').trim(); if (!s) return '';
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
@@ -2871,14 +3013,14 @@ function render() {
   main.dataset.view = v;
   if (!sameView) window.scrollTo(0, 0); else window.scrollTo(0, y);
   document.title = `${TITLES[v]} · Sankalpa`;
-  $$('[data-nav]').forEach(a => a.classList.toggle('on', a.dataset.nav === v || (a.dataset.nav === 'more' && MORE.some(m => m[0] === v))));
+  $$('[data-nav]').forEach(a => a.classList.toggle('on', a.dataset.nav === v || (a.dataset.nav === 'more' && !navTabs().some(t => t[0] === v))));
   tick();
 }
 const shown = n => !S.hidden.includes(n[0]);
 function buildNav() {
-  $('#bottomnav').innerHTML = iconize(NAV.filter(shown).map(n => `<a href="#${n[0]}" data-nav="${n[0]}"><span>${n[2]}</span><small>${n[1]}</small></a>`).join(''));
+  $('#bottomnav').innerHTML = iconize(navTabs().map(n => `<a href="#${n[0]}" data-nav="${n[0]}"><span>${n[2]}</span><small>${n[1]}</small></a>`).join(''));
   $('#sidenav').innerHTML = iconize(`<div class="brand"><span class="brand-mark">🪷</span><b>Sankalpa</b></div>` +
-    [...NAV.filter(n => n[0] !== 'more'), ...MORE].filter(shown).map(n => `<a href="#${n[0]}" data-nav="${n[0]}"><span>${n[2]}</span>${n[1]}</a>`).join(''));
+    [...navTabs().filter(n => n[0] !== 'more'), ...allPages().filter(p => !navTabs().some(t => t[0] === p[0]))].filter(shown).map(n => `<a href="#${n[0]}" data-nav="${n[0]}"><span>${n[2]}</span>${n[1]}</a>`).join(''));
 }
 
 // ---------- events ----------
@@ -2914,6 +3056,13 @@ document.addEventListener('submit', e => {
   const f = e.target.closest('[data-submit]'); if (!f) return; e.preventDefault();
   if (f.dataset.submit === 'addItem') { const v = $('#itemIn').value.trim(); if (!v) return; findBy(S.lists, UI.listId).items.push({ id: uid(), text: v, done: false }); save(); setTimeout(() => $('#itemIn')?.focus(), 0); }
   if (f.dataset.submit === 'addLink') { const v = $('#linkIn').value.trim(); if (v) addLinkUrl(v); }
+  if (f.dataset.submit === 'planType') {
+    const p = parsePlanText($('#planIn').value || ''); if (!p.title) return;
+    const pr = 2, t = { id: uid(), title: p.title, areaId: 'mind', goalId: '', deadline: UI.planDate, priority: pr, minutes: PRIO_MIN[pr], remindBefore: [], remindAt: '', repeat: 'none', notes: '', created: Date.now(), done: false };
+    if (p.start) t.plan = { date: UI.planDate, start: p.start, dur: p.dur || 60 }; else if (p.dur) t.planDur = p.dur;
+    S.tasks.push(t); save(); toast(p.start ? `Planned for ${p.start}` : 'Added — drag it onto the timeline', '🗓️');
+    setTimeout(() => $('#planIn')?.focus(), 30);
+  }
   if (f.dataset.submit === 'addIdea') { const v = $('#ideaIn').value.trim(); if (!v) return; S.ideas.push({ id: uid(), title: v, note: '', status: 'New', created: Date.now(), ventureId: UI.venture !== 'All' ? UI.venture : S.ventures[0]?.id }); earn(1, 5, 'Idea: ' + v, true); toast('Idea saved', '💡'); save(); }
 });
 $('#modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
@@ -3180,15 +3329,24 @@ Object.assign(A, {
   // ---------- day planner ----------
   planDay(d) { UI.planDate = +d.v === 0 ? dkey() : dkey(addDays(parseDate(UI.planDate), +d.v)); UI.pickTask = null; render(); },
   pickTask(d) { if (DRAG_SUPPRESS) return; UI.pickTask = UI.pickTask === d.id ? null : d.id; render(); },
+  planStep(d) { S.settings.planStep = +d.v; save(); },
+  slotTask(d) {
+    openForm({ title: `New task at ${d.v}`, fields: [{ k: 'title', label: 'Task', placeholder: 'e.g. Revise enzyme kinetics' }, { k: 'dur', label: 'Duration (minutes)', type: 'number', value: +S.settings.planStep >= 30 ? 60 : 30 }, { k: 'start', label: 'Starts at', type: 'time', value: d.v }],
+      saveLabel: 'Add to timeline',
+      onSave: v => { if (!v.title) return false; const pr = 2;
+        S.tasks.push({ id: uid(), title: v.title, areaId: 'mind', goalId: '', deadline: UI.planDate, priority: pr, minutes: PRIO_MIN[pr], remindBefore: [], remindAt: '', repeat: 'none', notes: '', created: Date.now(), done: false, plan: { date: UI.planDate, start: v.start || d.v, dur: Math.max(5, +v.dur || 60) } });
+        toast(`Planned for ${v.start || d.v}`, '🗓️'); return true; } });
+  },
   placeTask(d) { if (!UI.pickTask) return; const id = UI.pickTask; UI.pickTask = null; scheduleTask(id, d.v); },
   editBlock(d) {
     const t = findBy(S.tasks, d.id);
     openForm({ title: t.title, fields: [
       { k: 'start', label: 'Starts at', type: 'time', value: t.plan.start },
-      { k: 'dur', label: 'How long', type: 'select', options: [[15, '15 min'], [30, '30 min'], [45, '45 min'], [60, '1 hour'], [90, '1½ hours'], [120, '2 hours'], [180, '3 hours'], [240, '4 hours']], value: t.plan.dur || 60 },
+      { k: 'dur', label: 'Duration (minutes)', type: 'number', value: t.plan.dur || 60, hint: 'Any length, e.g. 10, 25, 50, 90' },
+      { k: 'title', label: 'Task', value: t.title },
       { k: 'done', label: 'Status', type: 'select', options: [['0', 'Not done yet'], ['1', '✓ Done']], value: t.done ? '1' : '0' }],
       saveLabel: 'Save',
-      onSave: v => { t.plan.start = v.start || t.plan.start; t.plan.dur = +v.dur; if ((v.done === '1') !== !!t.done) setTimeout(() => A.toggleTask({ id: t.id }), 250); return true; },
+      onSave: v => { t.plan.start = v.start || t.plan.start; t.plan.dur = Math.max(5, Math.round(+v.dur || 60)); if (v.title) t.title = v.title; if ((v.done === '1') !== !!t.done) setTimeout(() => A.toggleTask({ id: t.id }), 250); return true; },
       onDelete: () => { t.plan = null; toast('Moved back to “To schedule”', '🗓️'); save(); } });
   },
 
@@ -3249,9 +3407,28 @@ function catManagerHTML() {
       <button class="icon-btn" data-a="catEdit" data-id="${c.id}" aria-label="Edit">✎</button></div>`).join('')}</div>
     <footer class="sheet-foot"><button class="btn" data-a="catEdit">+ Add</button><button class="btn primary" data-a="closeModal">Done</button></footer>`;
 }
+// which minute of the day is under the pointer on the timeline (snapped to the zoom step)
+function timelineMinute(x, y) {
+  const tl = document.querySelector('.tl-body'); if (!tl) return null;
+  const r = tl.getBoundingClientRect(); if (x < r.left || x > r.right || y < r.top || y > r.bottom) return null;
+  const step = +S.settings.planStep || 60, m = PLAN_START + Math.floor((y - r.top) / ROW_H) * step;
+  return clamp(m, PLAN_START, PLAN_END - step);
+}
+function parsePlanText(txt) {
+  let s = txt.trim(), start = null, dur = null;
+  const tm = s.match(/^(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?(?=\s)/i);
+  if (tm && (tm[2] || tm[3])) {
+    let h = +tm[1]; const mi = +(tm[2] || 0);
+    if (tm[3]) h = (h % 12) + (/pm/i.test(tm[3]) ? 12 : 0);
+    if (h < 24 && mi < 60) { start = hhmm(h * 60 + mi); s = s.slice(tm[0].length).trim(); }
+  }
+  const dm = s.match(/\s+(\d+(?:\.\d+)?)\s*(m|min|mins|h|hr|hrs|hour|hours)$/i);
+  if (dm) { dur = Math.round(+dm[1] * (/^h/i.test(dm[2]) ? 60 : 1)); s = s.slice(0, dm.index); }
+  return { title: s.trim(), start, dur };
+}
 function scheduleTask(id, hh) {
   const t = findBy(S.tasks, id); if (!t) return;
-  t.plan = { date: UI.planDate, start: hh, dur: (t.plan && t.plan.dur) || 60 };
+  t.plan = { date: UI.planDate, start: hh, dur: (t.plan && t.plan.dur) || t.planDur || 60 };
   toast(`Planned for ${hh}`, '🗓️'); save();
 }
 function maybeOnboard() { if (!LOCKED && !S.onboarded && $('#modal').hidden) openModal(onboardingHTML(), 'welcome-sheet'); }
@@ -3288,7 +3465,7 @@ document.addEventListener('pointermove', e => {
   }
   e.preventDefault();
   DRAG.ghost.style.left = e.clientX + 'px'; DRAG.ghost.style.top = e.clientY + 'px';
-  const under = document.elementFromPoint(e.clientX, e.clientY), slot = under && under.closest('[data-slot]');
+  const min = timelineMinute(e.clientX, e.clientY), slot = min != null ? document.querySelector(`.tl-row[data-slot="${hhmm(Math.floor((min - PLAN_START) / (+S.settings.planStep || 60)) * (+S.settings.planStep || 60) + PLAN_START)}"]`) : null;
   if (DRAG.over && DRAG.over !== slot) DRAG.over.classList.remove('drop-over');
   if (slot) slot.classList.add('drop-over'); DRAG.over = slot;
   if (e.clientY < 90) window.scrollBy(0, -12); else if (e.clientY > innerHeight - 110) window.scrollBy(0, 12);
@@ -3299,8 +3476,8 @@ document.addEventListener('pointerup', e => {
   if (!d.ghost) return;
   d.ghost.remove(); d.el.classList.remove('dragging'); if (d.over) d.over.classList.remove('drop-over');
   DRAG_SUPPRESS = true; setTimeout(() => { DRAG_SUPPRESS = false; }, 350);
-  const under = document.elementFromPoint(e.clientX, e.clientY), slot = under && under.closest('[data-slot]');
-  if (slot) { UI.pickTask = null; scheduleTask(d.id, slot.dataset.slot); }
+  const min = timelineMinute(e.clientX, e.clientY);
+  if (min != null) { UI.pickTask = null; scheduleTask(d.id, hhmm(min)); }
 });
 document.addEventListener('pointercancel', () => { if (DRAG && DRAG.ghost) { DRAG.ghost.remove(); DRAG.el.classList.remove('dragging'); } DRAG = null; });
 
@@ -3569,3 +3746,45 @@ function syncTasksFromRow(sh, r) {
 }
 const _cycleCell = A.cycleCell;
 A.cycleCell = function (d) { _cycleCell(d); const sh = curSheet(), r = sh && findBy(sh.rows, d.id); if (r && syncTasksFromRow(sh, r)) save(); };
+/* Part 4f: actions for layout editing, bottom bar, petals, minute adjustments */
+function layoutIds(page) {
+  const L = S.layout[page] = S.layout[page] || { order: [], hidden: [] };
+  const dom = $$('.layout [data-block]').map(el => el.dataset.block);
+  L.order = [...L.order.filter(id => dom.includes(id) || L.hidden.includes(id)), ...dom.filter(id => !L.order.includes(id))];
+  return L;
+}
+Object.assign(A, {
+  lEdit(d) { UI.editLayout = d.p; render(); window.scrollTo(0, 0); },
+  lDone() { UI.editLayout = null; render(); toast('Layout saved', '✨'); },
+  lMove(d) {
+    const L = layoutIds(d.p), vis = L.order.filter(id => !L.hidden.includes(id)), i = vis.indexOf(d.id), j = i + +d.v;
+    if (j < 0 || j >= vis.length) return;
+    const a = L.order.indexOf(vis[i]), b = L.order.indexOf(vis[j]); [L.order[a], L.order[b]] = [L.order[b], L.order[a]];
+    save(); const el = $(`[data-block="${d.id}"]`); if (el) el.scrollIntoView({ block: 'center' });
+  },
+  lHide(d) { const L = layoutIds(d.p); if (!L.hidden.includes(d.id)) L.hidden.push(d.id); save(); },
+  lShow(d) { const L = layoutIds(d.p); L.hidden = L.hidden.filter(x => x !== d.id); save(); },
+  async lReset(d) { if (await confirmBox('Put every section back in its original place?', 'Reset')) { S.layout[d.p] = { order: [], hidden: [] }; save(); } },
+  tabMove(d) { const T = navTabs().filter(t => t[0] !== 'more').map(t => t[0]), i = T.indexOf(d.id), j = i + +d.v; if (j < 0 || j >= T.length) return; [T[i], T[j]] = [T[j], T[i]]; S.layout.tabs = T; save(); },
+  tabRemove(d) { S.layout.tabs = navTabs().filter(t => t[0] !== 'more' && t[0] !== d.id).map(t => t[0]); save(); },
+  editPetals() { openModal(petalsHTML()); },
+  adjustMinutes() {
+    openForm({ title: 'Adjust minutes', fields: [
+      { k: 'kind', label: 'What happened?', type: 'select', options: [['spent', 'I used free time without the timer'], ['bonus', 'Add bonus minutes (a treat for myself)']], value: 'spent' },
+      { k: 'm', label: 'Minutes', type: 'number', value: 15 }, { k: 'r', label: 'On what? (optional)', value: '' }],
+      onSave: v => {
+        if (!v.m) return false;
+        if (v.kind === 'bonus') earn(+v.m, 0, 'Bonus: ' + (v.r || 'treat'));
+        else { unearn(+v.m, 0, 'Used: ' + (v.r || 'free time')); toast(`${v.m} min taken from your balance. Thanks for being honest.`, '🙏'); }
+        return true;
+      } });
+  },
+});
+document.addEventListener('change', e => {
+  const el = e.target;
+  if (el.dataset.ch === 'tabAdd' && el.value) { const T = navTabs().filter(t => t[0] !== 'more').map(t => t[0]); if (T.length < 4) { T.push(el.value); S.layout.tabs = T; save(); } }
+  if (el.dataset.ch === 'petal') {
+    const off = new Set(S.settings.petalsOff || []); el.checked ? off.delete(el.value) : off.add(el.value);
+    S.settings.petalsOff = [...off]; save({ silent: true }); render();
+  }
+});
