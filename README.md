@@ -6,6 +6,14 @@ Everyone signs in with **Google or email**. Each account gets its own fresh, pri
 
 **Everything is free:** GitHub Pages (hosting), GitHub Actions (reminder timer), Firebase Spark plan (sign-in, database, push). Keep this repository **Public** — Actions minutes are unlimited for public repos.
 
+## What's new in this version
+- **Sage & peach look** with an optional **Twilight plum** theme (Settings → Appearance), and an animated lotus background (petals, glowing orbs) you can switch to still.
+- **Today = four big cards:** Focus goal 1, Focus goal 2, Tasks today, Health. Below them: Study + Startup today, priorities, next up and the rest.
+- **Study + Startup schedule** (Today → Study + Startup): weekly blocks with times, reminders, weekly hour targets, overlap warnings and tick-off per day. Blocks also appear on the Timeline and Calendar.
+- **Editable Calendar** (Today → Calendar): tasks, festivals and vrat, content posting dates. Tap a day to add, edit or move items.
+- **Merged pages:** Startup ideas + Bucket list + Watch later → *Someday* (Plan); Rewards + Insights → *Progress* (profile menu).
+- Removed: Life phase pill and the timetable Excel import button.
+
 ---
 
 ## What's in this repository

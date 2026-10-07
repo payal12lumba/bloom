@@ -291,6 +291,7 @@ function defaultState() {
     v: 1, updatedAt: 0,
     areas: AREAS_DEFAULT.map(a => ({ ...a })),
     goals: [], tasks: [],
+    focusBlocks: [], focusLog: {},
     habits: [
       { id: 'h_spirit', name: 'Prayer / spiritual time', emoji: '🙏', areaId: 'balance' },
       { id: 'h_study', name: 'Study session', emoji: '📚', areaId: 'mind' },
@@ -333,6 +334,7 @@ function defaultState() {
     worklog: {},
     layout: { tabs: ['today', 'tasks', 'timetable', 'health'], today: { order: [], hidden: [] }, health: { order: [], hidden: [] } },
     settings: {
+      theme: 'sage', motion: true, focusTarget: { study: 0, startup: 0 },
       name: '', currency: '₹', waterGoal: 8, sleepGoal: 8, weightGoal: '',
       remindBefore: [1440, 60],
       notify: Object.fromEntries(NOTIFY_TYPES.map(n => [n[0], true])),
@@ -386,8 +388,12 @@ function migrate(s) {
     s.sheets = s.sheets || []; s.v5 = true;
   }
   s.worklog = s.worklog || {};
+  s.focusBlocks = s.focusBlocks || []; s.focusLog = s.focusLog || {};
+  s.settings.theme = s.settings.theme || 'sage';
+  s.settings.focusTarget = s.settings.focusTarget || { study: 0, startup: 0 };
   s.layout = s.layout || { tabs: ['today', 'tasks', 'timetable', 'health'] };
   s.layout.tabs = s.layout.tabs || ['today', 'tasks', 'timetable', 'health'];
+  if (!s.v6) { s.layout.today = { order: [], hidden: [] }; s.v6 = true; }
   s.settings.petalsOff = s.settings.petalsOff || [];
   s.settings.planStep = s.settings.planStep || 60;
   s.settings.earn = { ...Object.fromEntries(EARN_TYPES.map(e => [e[0], e[2]])), ...(s.settings.earn || {}) };
@@ -545,7 +551,7 @@ const beforeLabel = m => (BEFORE_OPTS.find(o => o[0] === m) || [m, `${m} min`])[
 function buildEvents() {
   const now = Date.now(), horizon = now + 30 * 864e5, ev = [];
   // shift: move out of quiet hours; 'exact': a time you chose yourself always rings
-  const TYPE = { t: 'tasks', tr: 'tasks', g: 'goals', c: 'content', cp: 'plan', pe: 'period', l: 'links', li: 'lists', tt: 'study', tm: 'study', sp: 'spaces', r: 'routines', w: 'water', sv: 'money', p: 'off', sh: 'sheets', fe: 'festivals', mb: 'briefing', eb: 'evening', wr: 'review', pb: 'planner' };
+  const TYPE = { fb: 'study', t: 'tasks', tr: 'tasks', g: 'goals', c: 'content', cp: 'plan', pe: 'period', l: 'links', li: 'lists', tt: 'study', tm: 'study', sp: 'spaces', r: 'routines', w: 'water', sv: 'money', p: 'off', sh: 'sheets', fe: 'festivals', mb: 'briefing', eb: 'evening', wr: 'review', pb: 'planner' };
   const add = (id, date, title, body, shift = true) => {
     const type = TYPE[id.split(':')[0]];
     if (type === 'off' || (type && S.settings.notify[type] === false)) return;
@@ -652,6 +658,7 @@ function buildEvents() {
       if (it.freq === 'daily' || (it.freq === 'weekly' && di === (+it.day || 0))) add(`sp:${it.id}:${k}:${it.time}`, atTime(day, it.time), `${sp.emoji} ${it.name}`, `${sp.name}${it.type === 'count' ? ` · goal ${it.target} ${it.unit || ''}` : ''}`, 'exact');
     }
     for (const r of st.routines) if (r.days.includes(di)) add(`r:${r.id}:${k}:${r.time}`, atTime(day, r.time), r.label, '', 'exact');
+    for (const b of (S.focusBlocks || [])) if (b.days.includes(di) && !(+b.remind < 0)) add(`fb:${b.id}:${k}:${b.start}`, new Date(atTime(day, b.start).getTime() - (+b.remind || 0) * 60000), `${b.kind === 'startup' ? '🚀' : '📚'} ${b.title}`, `${b.kind === 'startup' ? 'Startup' : 'Study'} block ${b.start}–${b.end}${+b.remind ? ' · starts in ' + b.remind + ' min' : ''}`, 'exact');
     if (st.water.on && +st.water.every > 0) {
       for (let m = toMin(st.water.from); m <= toMin(st.water.to); m += st.water.every * 60) {
         const hh = `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
@@ -1115,7 +1122,6 @@ function vTimetable() {
       ${monthly ? `<button class="btn small" data-a="addCol">+ Column</button>` : `<button class="btn small" data-a="addRow">+ Time slot</button>`}
       ${chips([['status', '👆 Tap = status'], ['edit', '✎ Tap = edit']], UI.ttMode || 'status', 'ttMode')}
       <button class="btn small ${tt.remind ? 'is-on' : ''}" data-a="ttRemind">🔔 ${tt.remind ? (monthly ? `Reminder ${tt.remindTime}` : 'Slot reminders on') : 'Remind me'}</button>
-      <button class="btn small" data-a="importTT">Import Excel</button>
       <button class="btn small primary" data-a="exportTT">Export Excel</button>
       ${S.timetables.length > 1 ? `<button class="btn small ghost danger" data-a="delTT">Delete</button>` : ''}
     </div>`;
@@ -1365,7 +1371,7 @@ const starBtn = (kind, x) => `<button class="tool ${isStar(x) ? 'on' : ''}" data
 
 // ---------- life phase ----------
 function phasePill() {
-  if (!featureOn('phase')) return '';
+  return '';
   const ph = S.phase;
   if (!ph.name) return `<button class="phase-pill empty" data-a="editPhase">🌷 Set your current life phase</button>`;
   const d = ph.until ? Math.ceil((parseDate(ph.until) - Date.now()) / 864e5) : null;
@@ -1749,6 +1755,7 @@ function fixedBlocks(k) {
   }
   for (const sp of S.spaces) for (const it of sp.items) if (it.time && (it.freq === 'daily' || (it.freq === 'weekly' && +it.day === di))) out.push({ start: toMin(it.time), dur: 20, label: sp.emoji + ' ' + it.name });
   for (const r of S.settings.routines) if (r.days.includes(di)) out.push({ start: toMin(r.time), dur: 20, label: r.label });
+  for (const b of (S.focusBlocks || [])) if (b.days.includes(di)) out.push({ start: toMin(b.start), dur: Math.max(15, toMin(b.end) - toMin(b.start)), label: (b.kind === 'startup' ? '🚀 ' : '📚 ') + b.title });
   return out;
 }
 // place overlapping blocks side by side
@@ -1879,13 +1886,7 @@ function mbSun(size = 220) {
   return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" aria-hidden="true"><g fill="none" stroke="${MB.ink}" stroke-width="1.5" opacity=".7">${rays}<circle cx="${c}" cy="${c}" r="${R * .3}"/><circle cx="${c}" cy="${c}" r="${R * .22}"/><circle cx="${c}" cy="${c}" r="${R * .92}" stroke-dasharray="1 5"/></g>
     <g fill="${MB.ochre}" opacity=".75">${dots}</g><circle cx="${c}" cy="${c}" r="${R * .09}" fill="${MB.red}" opacity=".6"/></svg>`;
 }
-(function paintDecor() {
-  const el = document.getElementById('decor'); if (!el) return;
-  el.innerHTML = `<div class="mb" style="right:-95px;top:-75px;transform:rotate(14deg)">${mbFlower(330)}</div>
-    <div class="mb" style="left:-70px;bottom:70px;transform:rotate(-14deg)">${mbFish(250)}</div>
-    <div class="mb" style="right:-55px;bottom:-70px">${mbSun(250)}</div>
-    <div class="mb" style="left:7%;top:38%;transform:rotate(8deg)">${mbFish(120)}</div>`;
-})();
+paintDecorAnimated();
 /* Part 3f: Sheets — Excel-style trackers with custom columns, shown as cards */
 
 Object.assign(UI, { sheetId: null, sheetQ: '', sheetShow: 'all', collapsed: {} });
@@ -2188,18 +2189,20 @@ VIEWS.rewards = vRewards;
    a unified Today page and feature switches */
 
 const SECTIONS = [
-  ['today', 'Today', '🪷', [['today', 'Overview'], ['planner', 'Timeline'], ['tasks', 'All tasks']]],
-  ['plan', 'Plan', '🎯', [['goals', 'Goals'], ['review', 'This week'], ['bucket', 'Someday', 'bucket']]],
-  ['sheets', 'Sheets', '📊', [['sheets', 'My sheets'], ['timetable', 'Study'], ['content', 'Content', 'content'], ['lists', 'Lists'], ['ideas', 'Ideas', 'ideas'], ['links', 'Watch later', 'links']]],
+  ['today', 'Today', '🪷', [['today', 'Overview'], ['focus', 'Study + Startup'], ['planner', 'Timeline'], ['calendar', 'Calendar'], ['tasks', 'All tasks']]],
+  ['plan', 'Plan', '🎯', [['goals', 'Goals'], ['review', 'This week'], ['ideas', 'Someday']]],
+  ['sheets', 'Sheets', '📊', [['sheets', 'My sheets'], ['timetable', 'Study'], ['content', 'Content', 'content'], ['lists', 'Lists']]],
   ['wellbeing', 'Wellbeing', '💗', [['health', 'Health'], ['spaces', 'Sadhana'], ['utsav', 'Festivals', 'festivals']]],
   ['money', 'Money', '💰', [['money', 'Money']]],
 ];
-const PROFILE_PAGES = [['rewards', 'Rewards', '⏳', 'rewards'], ['insights', 'Insights', '📈'], ['settings', 'Settings', '⚙️']];
-const FEATURES = [['rewards', '⏳ Rewards & free-time minutes'], ['shloka', '📖 Shloka of the day'], ['phase', '🌷 Life phase'], ['festivals', '🪔 Festivals & vrat'],
+const PROFILE_PAGES = [['rewards', 'Progress', '📈'], ['settings', 'Settings', '⚙️']];
+const SUB_ALIAS = { bucket: 'ideas', links: 'ideas', insights: 'rewards' };
+const FEATURES = [['rewards', '⏳ Rewards & free-time minutes'], ['shloka', '📖 Shloka of the day'], ['festivals', '🪔 Festivals & vrat'],
   ['content', '🎬 Content studio'], ['ideas', '💡 Startup ideas'], ['links', '🔗 Watch later'], ['bucket', '🌈 Someday / bucket list']];
 const featureOn = k => !(S.settings.features && S.settings.features[k] === false);
 const SECTION_OF = {};
 SECTIONS.forEach(s => s[3].forEach(sub => { SECTION_OF[sub[0]] = s[0]; }));
+SECTION_OF.bucket = 'plan'; SECTION_OF.links = 'plan';
 UI.lastSub = UI.lastSub || {};
 
 function sectionsOrdered() {
@@ -2216,10 +2219,10 @@ function sectionChrome(v) {
   const secId = SECTION_OF[v], sec = SECTIONS.find(s => s[0] === secId);
   const initial = (S.settings.name || (Cloud.status().email || '').split('@')[0] || '·').trim().charAt(0).toUpperCase() || '·';
   const top = `<div class="topbar"><span class="tb-brand">🪷 Sankalpa</span><button class="avatar" data-a="profileMenu" aria-label="Profile, rewards, insights and settings">${esc(initial)}</button></div>`;
-  if (!sec) return top + `<nav class="subnav">${PROFILE_PAGES.filter(p => !p[3] || featureOn(p[3])).map(p => `<a href="#${p[0]}" class="${p[0] === v ? 'on' : ''}">${p[1]}</a>`).join('')}</nav>`;
+  if (!sec) return top + `<nav class="subnav">${PROFILE_PAGES.filter(p => !p[3] || featureOn(p[3])).map(p => `<a href="#${p[0]}" class="${p[0] === (SUB_ALIAS[v] || v) ? 'on' : ''}">${p[1]}</a>`).join('')}</nav>`;
   UI.lastSub[secId] = v;
   const subs = subsOf(sec);
-  return top + (subs.length > 1 ? `<nav class="subnav">${subs.map(s => `<a href="#${s[0]}" class="${s[0] === v ? 'on' : ''}">${s[1]}</a>`).join('')}</nav>` : '');
+  return top + (subs.length > 1 ? `<nav class="subnav">${subs.map(s => `<a href="#${s[0]}" class="${s[0] === (SUB_ALIAS[v] || v) ? 'on' : ''}">${s[1]}</a>`).join('')}</nav>` : '');
 }
 function profileMenuHTML() {
   const c = Cloud.status();
@@ -2307,9 +2310,9 @@ function tabsCard() {
       <button class="icon-btn" data-a="secMove" data-id="${s[0]}" data-v="1" ${i === secs.length - 1 ? 'disabled' : ''} aria-label="Move down">▼</button></div>`).join('')}</div></section>`;
 }
 function settingsExtras() {
-  return tabsCard() + `<section class="card"><div class="card-head"><h2>🧩 Features</h2><button class="btn small" data-a="editFeatures">Change</button></div>
+  return appearanceCard() + focusTargetCard() + tabsCard() + `<section class="card"><div class="card-head"><h2>🧩 Features</h2><button class="btn small" data-a="editFeatures">Change</button></div>
       <p class="small muted">On: ${FEATURES.filter(f => featureOn(f[0])).map(f => f[1].replace(/^\S+\s/, '')).join(', ') || 'none'}.</p></section>
-    ${featureOn('phase') ? `<section class="card"><div class="card-head"><h2>🌷 Current life phase</h2><button class="btn small" data-a="editPhase">Edit</button></div>
+    ${false ? `<section class="card"><div class="card-head"><h2>🌷 Current life phase</h2><button class="btn small" data-a="editPhase">Edit</button></div>
       ${S.phase.name ? `<p><b>${esc(S.phase.emoji)} ${esc(S.phase.name)}</b>${S.phase.until ? ` · until ${fmtDate(S.phase.until)}` : ''}</p>` : '<p class="small muted">Name the season you\'re in, like “JRF year 1 + channel growth”.</p>'}</section>` : ''}
     <section class="card"><div class="card-head"><h2>🗂️ Your lists</h2></div>
       <div class="row wrap"><button class="btn small" data-a="manage" data-v="platforms">Content platforms</button><button class="btn small" data-a="manage" data-v="ventures">Startups</button><button class="btn small" data-a="manageCats">Money categories</button></div></section>`;
@@ -3222,6 +3225,7 @@ function localReminderCheck() {
 function currentView() { const v = location.hash.slice(1); return VIEWS[v] && v !== 'more' ? v : 'today'; }
 function render() {
   const main = $('#main');
+  applyTheme();
   document.body.classList.toggle('locked', LOCKED);
   buildNav();
   if (LOCKED) { main.innerHTML = vGate(); main.dataset.view = 'gate'; document.title = 'Sankalpa'; return; }
@@ -3232,6 +3236,7 @@ function render() {
   main.dataset.view = v;
   if (!sameView) window.scrollTo(0, 0); else window.scrollTo(0, y);
   document.title = `${TITLES[v]} · Sankalpa`;
+  { const sn = main.querySelector('.subnav'), on = sn && sn.querySelector('a.on'); if (sn && on) sn.scrollLeft = on.offsetLeft - (sn.clientWidth - on.offsetWidth) / 2; }
   $$('[data-nav]').forEach(a => a.classList.toggle('on', a.dataset.nav === (SECTION_OF[v] || v)));
   tick();
 }
@@ -3286,6 +3291,271 @@ document.addEventListener('submit', e => {
   if (f.dataset.submit === 'addIdea') { const v = $('#ideaIn').value.trim(); if (!v) return; S.ideas.push({ id: uid(), title: v, note: '', status: 'New', created: Date.now(), ventureId: UI.venture !== 'All' ? UI.venture : S.ventures[0]?.id }); earn(1, 5, 'Idea: ' + v, true); toast('Idea saved', '💡'); save(); }
 });
 $('#modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
+/* ===== Part 5: Sage & peach redesign — four big Today cards, Study + Startup schedule,
+   editable calendar, Someday / Progress hubs, themes and the animated lotus background ===== */
+
+Object.assign(TITLES, { focus: 'Study + Startup', calendar: 'Calendar', ideas: 'Someday', bucket: 'Someday', links: 'Someday', rewards: 'Progress', insights: 'Progress' });
+Object.assign(UI, { calMonth: null, calSel: null });
+
+// ---------- themes ----------
+function applyTheme() {
+  const st = (typeof S === 'object' && S && S.settings) || {};
+  const t = st.theme === 'twilight' ? 'twilight' : 'sage';
+  document.documentElement.dataset.theme = t;
+  document.body.classList.toggle('still', st.motion === false);
+  const m = document.querySelector('meta[name=theme-color]'); if (m) m.setAttribute('content', t === 'twilight' ? '#3B2F4D' : '#A9BC96');
+}
+function appearanceCard() {
+  const st = S.settings;
+  return `<section class="card"><div class="card-head"><h2>🎨 Appearance</h2></div>
+    <p class="small muted">Choose the colours and whether the lotus background moves. Your data is not affected.</p>
+    ${chips([['sage', 'Sage & peach'], ['twilight', 'Twilight plum']], st.theme || 'sage', 'setTheme')}
+    ${chips([['on', 'Animated background'], ['off', 'Still background']], st.motion === false ? 'off' : 'on', 'setMotion')}</section>`;
+}
+function focusTargetCard() {
+  const tg = S.settings.focusTarget || {};
+  return `<section class="card"><div class="card-head"><h2>🎓 Study + 🚀 Startup targets</h2><button class="btn small" data-a="editFocusTarget">Set</button></div>
+    <dl class="kv"><dt>Study per week</dt><dd>${tg.study ? tg.study + ' h' : 'not set'}</dd><dt>Startup per week</dt><dd>${tg.startup ? tg.startup + ' h' : 'not set'}</dd></dl>
+    <a class="link small" href="#focus">Open your schedule</a></section>`;
+}
+
+// ---------- animated lotus background (replaces the old mandalas) ----------
+function paintDecorAnimated() {
+  const el = document.getElementById('decor'); if (!el) return;
+  const petals = (n, r1, r2) => Array.from({ length: n }, (_, i) => `<path d="M100 100C${100 - r1} ${100 - r2 * .55} ${100 - r1} ${100 - r2 * .9} 100 ${100 - r2}C${100 + r1} ${100 - r2 * .9} ${100 + r1} ${100 - r2 * .55} 100 100Z" transform="rotate(${(i * 360 / n).toFixed(1)} 100 100)"/>`).join('');
+  const lotus = cls => `<svg class="lotus ${cls}" viewBox="0 0 200 200" aria-hidden="true"><g class="lt-a" fill="none" stroke="currentColor" stroke-width="1.2">${petals(8, 17, 90)}</g><g class="lt-b" fill="none" stroke="currentColor" stroke-width="1.2">${petals(8, 11, 62).replace(/rotate\(([\d.]+)/g, (m, a) => `rotate(${(+a + 22.5).toFixed(1)}`)}</g><g class="lt-c" fill="none" stroke="currentColor" stroke-width="1.2">${petals(16, 6, 38)}<circle cx="100" cy="100" r="7"/></g></svg>`;
+  let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  const fall = Array.from({ length: 14 }, (_, i) => `<i class="fp ${i % 3 === 0 ? 'pe' : i % 3 === 1 ? 'sg' : 'cr'}" style="left:${(rnd() * 96).toFixed(1)}%;--sz:${(10 + rnd() * 14).toFixed(0)}px;--dur:${(16 + rnd() * 16).toFixed(1)}s;--dl:-${(rnd() * 30).toFixed(1)}s;--dx:${(-40 + rnd() * 80).toFixed(0)}px"></i>`).join('');
+  const orbs = Array.from({ length: 7 }, () => `<b class="orb" style="left:${(rnd() * 94).toFixed(1)}%;top:${(rnd() * 90).toFixed(1)}%;--sz:${(5 + rnd() * 7).toFixed(0)}px;--dur:${(9 + rnd() * 9).toFixed(1)}s;--dl:-${(rnd() * 10).toFixed(1)}s"></b>`).join('');
+  el.innerHTML = `${lotus('l1')}${lotus('l2')}${fall}${orbs}`;
+}
+
+// ---------- Study + Startup schedule ----------
+const FB_KIND = { study: { label: 'Study', emoji: '📚', color: '#6F8A5B' }, startup: { label: 'Startup', emoji: '🚀', color: '#E08A5E' } };
+const fbMin = b => Math.max(0, toMin(b.end) - toMin(b.start));
+const fmtHours = m => m < 60 ? `${m} min` : m % 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m / 60} h`;
+const weekMonday = () => addDays(new Date(), -dayIdx(new Date()));
+function fbToday(k = dkey()) { const di = dayIdx(parseDate(k)); return (S.focusBlocks || []).filter(b => b.days.includes(di)).sort((a, b) => toMin(a.start) - toMin(b.start)); }
+function fbWeekMin(kind) { return (S.focusBlocks || []).filter(b => !kind || b.kind === kind).reduce((a, b) => a + fbMin(b) * b.days.length, 0); }
+const fbIsDone = (b, k) => !!(S.focusLog && S.focusLog[k] && S.focusLog[k][b.id]);
+
+function fbRow(b, k = dkey(), now = -1) {
+  const K = FB_KIND[b.kind] || FB_KIND.study, done = fbIsDone(b, k), live = k === dkey() && now >= toMin(b.start) && now < toMin(b.end);
+  return `<div class="fb-row ${b.kind} ${done ? 'is-done' : ''} ${live ? 'live' : ''}">
+    <button class="check ${done ? 'on' : ''}" style="--c:${K.color}" data-a="fbDone" data-id="${b.id}" data-d="${k}" aria-label="Mark block done">${done ? '✓' : ''}</button>
+    <div class="grow" data-a="editFb" data-id="${b.id}" role="button" tabindex="0"><div class="title">${K.emoji} ${esc(b.title)}</div><div class="meta">${b.start}–${b.end} · ${fmtHours(fbMin(b))}${live ? ' · now' : ''}</div></div></div>`;
+}
+function fbPlain(b) {
+  const K = FB_KIND[b.kind] || FB_KIND.study;
+  return `<div class="fb-row ${b.kind}" data-a="editFb" data-id="${b.id}" role="button" tabindex="0"><span class="fb-bar" style="background:${K.color}"></span>
+    <div class="grow"><div class="title">${K.emoji} ${esc(b.title)}</div><div class="meta">${b.start}–${b.end} · ${fmtHours(fbMin(b))}</div></div><span class="muted">✎</span></div>`;
+}
+function schedCard() {
+  const k = dkey(), bl = fbToday(k), now = new Date().getHours() * 60 + new Date().getMinutes();
+  const dn = bl.filter(b => fbIsDone(b, k)).length, planned = bl.reduce((a, b) => a + fbMin(b), 0);
+  return `<section class="card sched-card"><div class="card-head"><h2>📚 Study + 🚀 Startup today</h2><a class="link small" href="#focus">Schedule</a></div>
+    ${bl.length ? `<p class="small muted">${dn} of ${bl.length} blocks done · ${fmtHours(planned)} planned</p>${progressBar(dn / bl.length, '#6F8A5B')}<div class="list">${bl.map(b => fbRow(b, k, now)).join('')}</div>`
+      : `<p class="muted">No study or startup blocks today. <a class="link" href="#focus">Set your weekly schedule</a> so every day has a plan.</p>`}</section>`;
+}
+function vFocus() {
+  const tg = S.settings.focusTarget || {}, mon = weekMonday(), has = (S.focusBlocks || []).length;
+  const stat = kd => {
+    const K = FB_KIND[kd], plan = fbWeekMin(kd), tgt = (+tg[kd] || 0) * 60; let done = 0;
+    for (let i = 0; i < 7; i++) { const k = dkey(addDays(mon, i)); fbToday(k).forEach(b => { if (b.kind === kd && fbIsDone(b, k)) done += fbMin(b); }); }
+    return `<section class="bigcard b${kd === 'study' ? 0 : 1} fstat"><span class="eyebrow">${K.emoji} ${K.label} this week</span><h3>${fmtHours(done)} done · ${fmtHours(plan)} planned</h3>
+      ${tgt ? `${progressBar(Math.min(1, plan / tgt), kd === 'study' ? '#FFFDF6' : '#6F8A5B')}<span class="meta">${plan >= tgt ? `Your plan meets the ${tg[kd]} h target` : `Plan ${fmtHours(tgt - plan)} more to reach ${tg[kd]} h`}</span>` : `<span class="meta">Set a weekly target in Settings to check your plan is enough.</span>`}</section>`;
+  };
+  const days = DAYS.map((dn, i) => {
+    const bl = (S.focusBlocks || []).filter(b => b.days.includes(i)).sort((a, b) => toMin(a.start) - toMin(b.start));
+    const clash = bl.some((b, j) => j > 0 && toMin(b.start) < toMin(bl[j - 1].end));
+    const tot = bl.reduce((a, b) => a + fbMin(b), 0);
+    return `<section class="card fb-day ${i === dayIdx(new Date()) ? 'today' : ''}"><div class="card-head"><h2>${dn}${i === dayIdx(new Date()) ? ' · today' : ''}</h2><button class="link small" data-a="newFb" data-day="${i}">+ Add</button></div>
+      ${bl.length ? `<p class="small muted">${fmtHours(tot)} planned</p>${clash ? '<p class="small status warn">⚠️ Two blocks overlap on this day.</p>' : ''}${bl.map(fbPlain).join('')}` : '<p class="small muted">Free day. Add a block if you want one.</p>'}</section>`;
+  }).join('');
+  return pageHead('Study + Startup', 'Fix your weekly blocks once. They show on Today, Timeline and Calendar, and send reminders.',
+    `<button class="btn small primary" data-a="newFb">＋ New block</button>`) +
+    (has ? '' : `<section class="card"><div class="card-head"><h2>Start with a sample week</h2></div><p class="small">Adds study blocks in the morning and evening plus startup blocks on weekday evenings and Saturday. Every time is editable, so treat it as a draft.</p><button class="btn small primary" data-a="fbStarter">Add sample week</button></section>`) +
+    `<div class="big-grid fgrid">${stat('study')}${stat('startup')}</div><div class="fb-week">${days}</div>`;
+}
+function fbForm(b = {}, preset = {}) {
+  const isNew = !b.id;
+  openForm({
+    title: isNew ? 'New block' : 'Edit block',
+    fields: [
+      { k: 'kind', label: 'Type', type: 'select', options: [['study', '📚 Study'], ['startup', '🚀 Startup']], value: b.kind || preset.kind || 'study' },
+      { k: 'title', label: 'What will you work on?', value: b.title, placeholder: 'e.g. GAT-B revision, pitch deck' },
+      { k: 'days', label: 'Days', type: 'days', value: b.days || preset.days || [0, 1, 2, 3, 4] },
+      { k: 'start', label: 'Starts', type: 'time', value: b.start || preset.start || '06:30' },
+      { k: 'end', label: 'Ends', type: 'time', value: b.end || preset.end || '08:30' },
+      { k: 'remind', label: 'Reminder', type: 'select', options: [[-1, 'No reminder'], [0, 'At start time'], [10, '10 minutes before'], [15, '15 minutes before'], [30, '30 minutes before']], value: b.remind ?? 10 },
+    ],
+    onSave: v => {
+      if (!v.title) { toast('Give the block a name', '✏️'); return false; }
+      if (!v.days.length) { toast('Pick at least one day', '🗓️'); return false; }
+      if (!v.start || !v.end || toMin(v.end) <= toMin(v.start)) { toast('The end time must be after the start time', '⏰'); return false; }
+      v.remind = +v.remind;
+      if (isNew) S.focusBlocks.push({ id: uid(), ...v }); else Object.assign(b, v);
+      return true;
+    },
+    onDelete: isNew ? null : async () => { if (await confirmBox(`Delete “${b.title}”?`)) { S.focusBlocks = S.focusBlocks.filter(x => x !== b); save(); } },
+  });
+}
+
+// ---------- the four big Today cards ----------
+function focusCards() {
+  const fg = S.goals.filter(g => g.focus && !g.done).slice(0, 2);
+  return [0, 1].map(i => {
+    const g = fg[i];
+    if (!g) return `<section class="bigcard b${i} empty" data-a="goFocus" role="button" tabindex="0"><span class="eyebrow">Focus goal ${i + 1}</span><h3>${i === 0 ? 'Choose your study goal' : 'Choose your startup goal'}</h3><p class="small">Pick the goal that matters most for ${i === 0 ? 'your studies' : 'your startup'} right now.</p><span class="arrow">→</span></section>`;
+    const ts = S.tasks.filter(t => t.goalId === g.id), ex = goalExtra(g), dn = ts.filter(t => t.done).length + ex.d, tot = ts.length + ex.n, frac = tot ? dn / tot : 0;
+    const next = ts.filter(t => !t.done).sort((a, b) => (parseDate(a.deadline) || 9e15) - (parseDate(b.deadline) || 9e15)).slice(0, 3);
+    const d = g.deadline ? Math.ceil((parseDate(g.deadline) - Date.now()) / 864e5) : null;
+    return `<section class="bigcard b${i}"><div class="focus-top">${ring(frac, 84)}<div class="grow"><span class="eyebrow">Focus goal ${i + 1} · ${esc(areaOf(g.areaId).emoji)} ${esc(areaOf(g.areaId).name)}</span>
+      <h3 data-a="editGoal" data-id="${g.id}" role="button" tabindex="0">${esc(g.title)}</h3>
+      <span class="meta">${tot ? `${dn} of ${tot} steps done` : 'Add steps to track progress'}${d != null ? ` · ${d >= 0 ? d + ' days left' : 'overdue'}` : ''}</span></div></div>
+      <div class="focus-steps">${next.map(t => `<div class="step"><button class="check" style="--c:#fff" data-a="toggleTask" data-id="${t.id}" aria-label="Done"></button><span class="grow" data-a="editTask" data-id="${t.id}" role="button" tabindex="0">${esc(t.title)}</span>${dueBadge(t.deadline)}</div>`).join('') || '<p class="small">No open steps yet. What is the next small action?</p>'}</div>
+      <button class="btn small" data-a="newTask" data-goal="${g.id}">+ Next step</button></section>`;
+  });
+}
+function tasksBig() {
+  const k = dkey(), endToday = parseDate(k);
+  const open = S.tasks.filter(t => !t.done && ((t.deadline && parseDate(t.deadline) <= endToday) || (t.plan && t.plan.date === k)))
+    .sort((a, b) => ((parseDate(a.deadline) || 9e15) - (parseDate(b.deadline) || 9e15)));
+  const dn = S.tasks.filter(t => t.done && t.doneAt && dkey(new Date(t.doneAt)) === k).length, tot = open.length + dn;
+  return `<section class="bigcard b2"><div class="focus-top">${ring(tot ? dn / tot : 0, 84)}<div class="grow"><span class="eyebrow">Tasks today</span>
+      <h3>${open.length ? `${open.length} to do` : tot ? 'All done today' : 'Nothing due'}</h3><span class="meta">${dn} finished today</span></div></div>
+    <div class="focus-steps">${open.slice(0, 4).map(t => `<div class="step"><button class="check" style="--c:#fff" data-a="toggleTask" data-id="${t.id}" aria-label="Done"></button><span class="grow" data-a="editTask" data-id="${t.id}" role="button" tabindex="0">${esc(t.title)}</span>${dueBadge(t.deadline)}</div>`).join('') || '<p class="small">Add a task with the ＋ button.</p>'}
+    ${open.length > 4 ? `<a class="link small" href="#tasks">${open.length - 4} more</a>` : ''}</div>
+    <div class="row"><button class="btn small" data-a="newTask">＋ Task</button><a class="btn small ghost" href="#tasks">All tasks</a></div></section>`;
+}
+function healthBig() {
+  const L = todayLog(), st = S.settings, drops = Math.max(st.waterGoal, L.water), moodE = ['😣', '😕', '😐', '🙂', '😄'], pi = periodInfo();
+  const extra = pi && pi.daysUntil >= 0 && pi.daysUntil <= 7 ? ` · period in ${pi.daysUntil} day${pi.daysUntil === 1 ? '' : 's'}` : '';
+  return `<section class="bigcard b3"><div class="focus-top">${ring(clamp(L.water / (st.waterGoal || 8), 0, 1), 84)}<div class="grow"><span class="eyebrow">Health today</span>
+      <h3>${L.water} of ${st.waterGoal} glasses</h3><span class="meta">${L.sleep ? L.sleep.hours + ' h sleep' : 'Sleep not logged'}${extra}</span></div></div>
+    <div class="drops">${Array.from({ length: drops }, (_, i) => `<button class="drop ${i < L.water ? 'on' : ''}" data-a="water" data-n="${i + 1}" aria-label="${i + 1} glasses"></button>`).join('')}<button class="mini-btn" data-a="waterPlus">+1</button></div>
+    <div class="wrap hb-pills"><button class="pill-btn ${L.sleep ? '' : 'dashed'}" data-a="logSleep">😴 ${L.sleep ? L.sleep.hours + ' h' : 'Log sleep'}</button>
+      <button class="pill-btn ${L.exercise.length ? '' : 'dashed'}" data-a="logWorkout">🏃 ${L.exercise.length ? L.exercise.reduce((a, e) => a + (+e.min || 0), 0) + ' min' : 'Log workout'}</button></div>
+    <div class="moods">${moodE.map((m, i) => `<button class="mood ${L.mood === i + 1 ? 'on' : ''}" data-a="mood" data-v="${i + 1}" aria-label="Mood ${i + 1} of 5">${m}</button>`).join('')}</div></section>`;
+}
+function vTodayBig() {
+  const st = S.settings, items = dayItems(dkey()), h = new Date().getHours();
+  const greet = h < 5 ? 'Still up' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  const dateTxt = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+  const done = items.filter(i => i.done).length;
+  const head = `<section class="t-head"><div class="grow"><p class="date">${dateTxt}</p><h1>${greet}${st.name ? ', ' + esc(st.name) : ''}</h1>
+      <div class="stat-row"><span class="stat">🔥 <b>${dayStreak()}</b> day streak</span>${featureOn('rewards') ? `<a class="stat" href="#rewards">⏳ <b>${Math.floor(S.rewards.balance)}</b> min</a>` : ''}</div></div>
+    <button class="flower-sm" data-a="editPetals" aria-label="Today's flower: ${done} of ${items.length} done. Tap to choose petals">${flowerSVG(items)}</button></section>`;
+  return (S.rewards.running && featureOn('rewards') ? runningCard() : '') + head + layoutPage('today', [
+    ['fest', 'Festival / vrat today', festTodayCard(), true],
+    ['big', 'Four focus cards', `<div class="big-grid">${focusCards().join('')}${tasksBig()}${healthBig()}</div>`, true],
+    ['sched', 'Study + Startup today', schedCard(), true],
+    ['prio', 'This week\'s priorities', prioritiesCard()], ['next', 'Next up', nextUp()],
+    ['list', 'Today\'s list', todayList()], ['done', 'Work done', doneCard()], ['coming', 'Coming up this week', comingUp()],
+    ['intention', 'Today\'s Sankalpa', intentionCard()], ['shloka', 'Shloka of the day', shlokaCard()]]) +
+    (UI.editLayout === 'today' ? '' : `<div class="customise"><button class="link small" data-a="lEdit" data-p="today">✎ Customise this page</button></div>`);
+}
+
+// ---------- editable month calendar ----------
+const CAL_KIND = { task: ['Task', '✅', 'editTask'], fest: ['Festival / vrat', '🪔', 'editFest'], content: ['Content', '🎬', 'editContent'], study: ['Study block', '📚', 'editFb'], startup: ['Startup block', '🚀', 'editFb'] };
+function calItems(k, withBlocks = true) {
+  const out = [];
+  S.tasks.forEach(t => {
+    const dl = t.deadline ? t.deadline.slice(0, 10) : '';
+    if (dl === k) out.push({ kind: 'task', id: t.id, title: t.title, done: t.done, time: t.deadline.length > 10 ? t.deadline.slice(11, 16) : '' });
+    else if (t.plan && t.plan.date === k) out.push({ kind: 'task', id: t.id, title: t.title, done: t.done, time: t.plan.start || '' });
+  });
+  (S.fest || []).forEach(f => { if (festOn(f, k)) out.push({ kind: 'fest', id: f.id, title: f.name, time: '' }); });
+  S.content.forEach(c => { if (c.deadline && c.deadline.slice(0, 10) === k) out.push({ kind: 'content', id: c.id, title: c.title, done: c.stage === 'Posted', time: '', sub: c.platform }); });
+  if (withBlocks) fbToday(k).forEach(b => out.push({ kind: b.kind, id: b.id, title: b.title, done: fbIsDone(b, k), time: b.start, sub: `${b.start}–${b.end}` }));
+  return out.sort((a, b) => (a.time || '99').localeCompare(b.time || '99'));
+}
+function calDayPanel(k) {
+  const its = calItems(k), label = parseDate(k).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+  const row = it => {
+    const [kl, ico, edit] = CAL_KIND[it.kind];
+    const mv = it.kind === 'study' || it.kind === 'startup' ? '' : `<button class="mini-btn" data-a="calMove" data-k="${it.kind}" data-id="${it.id}" data-d="${k}" aria-label="Move to another date">⇄</button>`;
+    return `<div class="row-item cal-it ${it.done ? 'is-done' : ''}"><span class="cdot ${it.kind}"></span><div class="grow" data-a="${edit}" data-id="${it.id}" role="button" tabindex="0"><div class="title">${ico} ${esc(it.title)}</div><div class="meta">${kl}${it.sub ? ' · ' + esc(it.sub) : it.time ? ' · ' + it.time : ''}${it.done ? ' · done' : ''}</div></div>${mv}</div>`;
+  };
+  return `<section class="card cal-day"><div class="card-head"><h2>${label}</h2><button class="icon-btn" data-a="calDay" data-d="${k}" aria-label="Close day">✕</button></div>
+    ${its.length ? `<div class="list">${its.map(row).join('')}</div>` : '<p class="muted small">Nothing on this day yet.</p>'}
+    <div class="row wrap"><button class="btn small" data-a="calAdd" data-k="task" data-d="${k}">＋ Task</button><button class="btn small" data-a="calAdd" data-k="fest" data-d="${k}">＋ Festival / vrat</button>
+      <button class="btn small" data-a="calAdd" data-k="content" data-d="${k}">＋ Content</button><button class="btn small" data-a="calAdd" data-k="study" data-d="${k}">＋ Study block</button><button class="btn small" data-a="calAdd" data-k="startup" data-d="${k}">＋ Startup block</button></div>
+    <p class="small muted">Study and startup blocks repeat every week on ${DAYS[dayIdx(parseDate(k))]}. Use ⇄ to move a task, festival or post to another date.</p></section>`;
+}
+function vCalendar() {
+  const ym = UI.calMonth || dkey().slice(0, 7), [y, m] = ym.split('-').map(Number), first = new Date(y, m - 1, 1), dim = new Date(y, m, 0).getDate(), today = dkey();
+  const cells = []; for (let i = 0; i < dayIdx(first); i++) cells.push(null);
+  for (let d = 1; d <= dim; d++) cells.push(`${y}-${pad(m)}-${pad(d)}`);
+  while (cells.length % 7) cells.push(null);
+  const grid = cells.map(k => {
+    if (!k) return '<div class="cal-cell blank"></div>';
+    const its = calItems(k, false), kinds = [...new Set(its.map(i => i.kind))];
+    return `<button class="cal-cell ${k === today ? 'today' : ''} ${k === UI.calSel ? 'sel' : ''} ${its.length ? 'has' : ''}" data-a="calDay" data-d="${k}" aria-label="${k}, ${its.length} items">
+      <span class="cn">${+k.slice(8)}</span><span class="cdots">${kinds.map(kd => `<i class="cdot ${kd}"></i>`).join('')}</span>
+      ${its.slice(0, 2).map(it => `<span class="ct ${it.kind}">${esc(it.title)}</span>`).join('')}${its.length > 2 ? `<span class="ct more">+${its.length - 2} more</span>` : ''}</button>`;
+  }).join('');
+  const legend = Object.entries(CAL_KIND).filter(([kd]) => kd !== 'study' && kd !== 'startup').map(([kd, v]) => `<span class="lg"><i class="cdot ${kd}"></i>${v[0]}</span>`).join('') + '<span class="lg">Study and startup blocks show when you tap a day</span>';
+  return pageHead('Calendar', 'Tasks, festivals, content posting dates and your study and startup blocks. Tap a day to add, edit or move things.') +
+    `<section class="card cal-card"><div class="cal-nav"><button class="btn small" data-a="calPrev" aria-label="Previous month">‹</button><h2>${first.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</h2>
+      <button class="btn small" data-a="calNext" aria-label="Next month">›</button><button class="btn small ghost" data-a="calToday">Today</button></div>
+      <div class="cal-grid">${DAYS.map(d => `<div class="cal-dow">${d}</div>`).join('')}${grid}</div><div class="cal-legend">${legend}</div></section>` +
+    (UI.calSel ? calDayPanel(UI.calSel) : '');
+}
+
+// ---------- Someday + Progress hubs ----------
+const shellTabs = (tabs, cur) => `<nav class="subtabs" aria-label="Sections">${tabs.map(([id, l]) => `<a href="#${id}" class="${id === cur ? 'on' : ''}">${l}</a>`).join('')}</nav>`;
+const SD_TABS = [['ideas', '💡 Startup ideas', 'ideas'], ['bucket', '🌈 Bucket list', 'bucket'], ['links', '🔗 Watch later', 'links']];
+['ideas', 'bucket', 'links'].forEach(id => { const f = VIEWS[id]; VIEWS[id] = () => shellTabs(SD_TABS.filter(t => featureOn(t[2]) || t[0] === id).map(t => [t[0], t[1]]), id) + f(); });
+const PG_TABS = [['rewards', '⏳ Rewards'], ['insights', '📈 Insights']];
+['rewards', 'insights'].forEach(id => { const f = VIEWS[id]; VIEWS[id] = () => shellTabs(featureOn('rewards') ? PG_TABS : PG_TABS.slice(1), id) + f(); });
+VIEWS.today = vTodayBig; VIEWS.focus = vFocus; VIEWS.calendar = vCalendar;
+
+Object.assign(A, {
+  setTheme(d) { S.settings.theme = d.v; save(); },
+  setMotion(d) { S.settings.motion = d.v === 'on'; save(); },
+  editFocusTarget() {
+    const tg = S.settings.focusTarget || {};
+    openForm({ title: 'Weekly targets', fields: [{ k: 'study', label: 'Study hours per week', type: 'number', value: tg.study || '' }, { k: 'startup', label: 'Startup hours per week', type: 'number', value: tg.startup || '' }],
+      onSave: v => { S.settings.focusTarget = { study: Math.max(0, +v.study || 0), startup: Math.max(0, +v.startup || 0) }; return true; } });
+  },
+  newFb(d) { fbForm({}, { days: d && d.day !== undefined ? [+d.day] : undefined, kind: d && d.kind }); },
+  editFb(d) { const b = findBy(S.focusBlocks, d.id); if (b) fbForm(b); },
+  fbDone(d) {
+    const b = findBy(S.focusBlocks, d.id); if (!b) return;
+    S.focusLog[d.d] = S.focusLog[d.d] || {};
+    if (S.focusLog[d.d][b.id]) { delete S.focusLog[d.d][b.id]; unearn(ER('habit'), 10, 'Undid block: ' + b.title); }
+    else { S.focusLog[d.d][b.id] = true; earn(ER('habit'), 10, `${b.kind === 'startup' ? '🚀' : '📚'} ${b.title}`); }
+    save();
+  },
+  fbStarter() {
+    if (S.focusBlocks.length) return;
+    const mk = (kind, title, days, start, end) => ({ id: uid(), kind, title, days, start, end, remind: 10 });
+    S.focusBlocks.push(mk('study', 'Deep study', [0, 1, 2, 3, 4, 5], '06:30', '09:00'), mk('study', 'Evening revision', [0, 1, 2, 3, 4], '19:30', '21:00'),
+      mk('startup', 'Startup work', [0, 1, 2, 3, 4], '17:00', '18:30'), mk('startup', 'Startup sprint', [5], '14:00', '17:00'), mk('startup', 'Startup planning', [6], '10:00', '11:00'));
+    toast('Sample week added. Edit the times to fit your day', '🗓️'); save();
+  },
+  calDay(d) { UI.calSel = UI.calSel === d.d ? null : d.d; render(); },
+  calPrev() { const [y, m] = (UI.calMonth || dkey().slice(0, 7)).split('-').map(Number); UI.calMonth = dkey(new Date(y, m - 2, 1)).slice(0, 7); UI.calSel = null; render(); },
+  calNext() { const [y, m] = (UI.calMonth || dkey().slice(0, 7)).split('-').map(Number); UI.calMonth = dkey(new Date(y, m, 1)).slice(0, 7); UI.calSel = null; render(); },
+  calToday() { UI.calMonth = null; UI.calSel = dkey(); render(); },
+  calAdd(d) {
+    if (d.k === 'task') taskForm({ deadline: d.d + 'T09:00' });
+    else if (d.k === 'fest') festForm({ date: d.d });
+    else if (d.k === 'content') contentForm({ deadline: d.d });
+    else fbForm({}, { kind: d.k, days: [dayIdx(parseDate(d.d))] });
+  },
+  calMove(d) {
+    ask('Move to another day', 'New date', d.d, 'date').then(v => {
+      if (!v || v === d.d) return;
+      if (d.k === 'task') { const t = findBy(S.tasks, d.id); if (!t) return; if (t.deadline && t.deadline.slice(0, 10) === d.d) t.deadline = v + t.deadline.slice(10); else if (t.plan) t.plan.date = v; }
+      else if (d.k === 'content') { const c = findBy(S.content, d.id); if (c) c.deadline = v; }
+      else if (d.k === 'fest') { const f = findBy(S.fest, d.id); if (f) f.date = v; }
+      UI.calSel = v; UI.calMonth = v.slice(0, 7); save(); toast('Moved', '🗓️');
+    });
+  },
+});
+
 window.addEventListener('hashchange', render);
 
 // ---------- start ----------
