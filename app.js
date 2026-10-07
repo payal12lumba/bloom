@@ -330,6 +330,7 @@ function defaultState() {
     contentPlan: { cells: {}, goals: {} }, v3: true,
     fest: [], reviews: {}, intentions: {}, v4: true, onboarded: false,
     sheets: [], v5: true,
+    worklog: {},
     layout: { tabs: ['today', 'tasks', 'timetable', 'health'], today: { order: [], hidden: [] }, health: { order: [], hidden: [] } },
     settings: {
       name: '', currency: '₹', waterGoal: 8, sleepGoal: 8, weightGoal: '',
@@ -384,6 +385,7 @@ function migrate(s) {
     [s.areas, s.habits, s.spaces, s.platforms, s.ventures, s.rewards.activities, s.lists, s.savings, s.money && s.money.expenseCats, s.money && s.money.incomeCats].forEach(fix);
     s.sheets = s.sheets || []; s.v5 = true;
   }
+  s.worklog = s.worklog || {};
   s.layout = s.layout || { tabs: ['today', 'tasks', 'timetable', 'health'] };
   s.layout.tabs = s.layout.tabs || ['today', 'tasks', 'timetable', 'health'];
   s.settings.petalsOff = s.settings.petalsOff || [];
@@ -1826,7 +1828,7 @@ function streakCard() {
 
 // ---------- welcome / first launch ----------
 function onboardingHTML() {
-  return `<div class="welcome"><div class="welcome-mandala">${mandalaSVG(180, '#B8913F', .55)}</div>
+  return `<div class="welcome"><div class="welcome-mandala">${mbFlower(170)}</div>
     <h2 class="script">Welcome to Sankalpa</h2><p>Your space for goals, routine, sadhana and growth. What should we call you?</p>
     <div class="field"><input id="obName" placeholder="Your name" value="${esc(S.settings.name || '')}"></div>
     <p class="small muted">How would you like to begin?</p>
@@ -1853,14 +1855,36 @@ function accountCard() {
 
 VIEWS.utsav = vUtsav; VIEWS.review = vReview; VIEWS.planner = vPlannerDay;
 
-// background: soft blush/lilac blobs + two slow gold mandalas
+// background: Madhubani-style line art (fish, flower, sun) drawn in sepia ink
+const MB = { ink: '#FFF6EC', ochre: '#F6DFA6', red: '#FBD0CB' };  // light cream-white ink on the pink paper
+const mbFish = (w = 220) => `<svg viewBox="0 0 160 90" width="${w}" height="${(w * 90 / 160).toFixed(0)}" aria-hidden="true"><g fill="none" stroke="${MB.ink}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" opacity=".75">
+  <path d="M8 45C28 8 88 8 114 45C88 82 28 82 8 45Z"/><path d="M15 45C32 17 84 17 105 45C84 73 32 73 15 45Z"/>
+  <path d="M114 45L152 16C145 35 145 55 152 74Z"/><path d="M124 45L144 31M124 45L144 59"/>
+  <circle cx="32" cy="40" r="4.5"/><circle cx="32" cy="40" r="1.4" fill="${MB.ink}"/>
+  <path d="M52 33q6 6 12 0M66 33q6 6 12 0M80 33q6 6 12 0M45 46q6 6 12 0M59 46q6 6 12 0M73 46q6 6 12 0M87 46q6 6 12 0M52 59q6 6 12 0M66 59q6 6 12 0M80 59q6 6 12 0"/>
+  <path d="M58 22C64 6 84 6 90 22M66 18v-9M74 17v-10M82 18v-9"/><path d="M58 68C64 84 84 84 90 68"/></g>
+  <g fill="${MB.red}" opacity=".5"><circle cx="24" cy="50" r="1.7"/><circle cx="21" cy="44" r="1.7"/></g><g fill="${MB.ochre}" opacity=".7"><circle cx="100" cy="45" r="1.8"/><circle cx="108" cy="45" r="1.8"/></g></svg>`;
+function mbFlower(size = 260) {
+  const c = size / 2, R = size / 2 - 6, rot = (n, f) => Array.from({ length: n }, (_, i) => f(i * 360 / n)).join('');
+  const dots = Array.from({ length: 40 }, (_, i) => { const t = i / 40 * 2 * Math.PI; return `<circle cx="${(c + R * .96 * Math.sin(t)).toFixed(1)}" cy="${(c - R * .96 * Math.cos(t)).toFixed(1)}" r="1.5"/>`; }).join('');
+  return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" aria-hidden="true"><g fill="none" stroke="${MB.ink}" stroke-width="1.5" opacity=".7">
+    ${rot(8, a => `<ellipse cx="${c}" cy="${c - R * .5}" rx="${R * .15}" ry="${R * .3}" transform="rotate(${a} ${c} ${c})"/><ellipse cx="${c}" cy="${c - R * .5}" rx="${R * .08}" ry="${R * .2}" transform="rotate(${a} ${c} ${c})"/>`)}
+    ${rot(16, a => `<ellipse cx="${c}" cy="${c - R * .83}" rx="${R * .06}" ry="${R * .12}" transform="rotate(${a + 11.25} ${c} ${c})"/>`)}
+    <circle cx="${c}" cy="${c}" r="${R * .15}"/><circle cx="${c}" cy="${c}" r="${R * .09}"/><circle cx="${c}" cy="${c}" r="${R * .66}" stroke-dasharray="1 6"/></g>
+    <g fill="${MB.red}" opacity=".45">${dots}</g><circle cx="${c}" cy="${c}" r="3" fill="${MB.ochre}" opacity=".8"/></svg>`;
+}
+function mbSun(size = 220) {
+  const c = size / 2, R = size / 2 - 4, rays = Array.from({ length: 16 }, (_, i) => `<path d="M${c} ${c - R * .36}L${c + R * .08} ${c - R * .66}L${c - R * .08} ${c - R * .66}Z" transform="rotate(${i * 22.5} ${c} ${c})"/>`).join('');
+  const dots = Array.from({ length: 16 }, (_, i) => { const t = (i + .5) / 16 * 2 * Math.PI; return `<circle cx="${(c + R * .8 * Math.sin(t)).toFixed(1)}" cy="${(c - R * .8 * Math.cos(t)).toFixed(1)}" r="2"/>`; }).join('');
+  return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" aria-hidden="true"><g fill="none" stroke="${MB.ink}" stroke-width="1.5" opacity=".7">${rays}<circle cx="${c}" cy="${c}" r="${R * .3}"/><circle cx="${c}" cy="${c}" r="${R * .22}"/><circle cx="${c}" cy="${c}" r="${R * .92}" stroke-dasharray="1 5"/></g>
+    <g fill="${MB.ochre}" opacity=".75">${dots}</g><circle cx="${c}" cy="${c}" r="${R * .09}" fill="${MB.red}" opacity=".6"/></svg>`;
+}
 (function paintDecor() {
   const el = document.getElementById('decor'); if (!el) return;
-  const blob = (x, y, s, c, o) => `<svg style="${x};${y}" width="${s}" height="${s}" viewBox="0 0 200 200"><path fill="${c}" fill-opacity="${o}" d="M43.1,-58.6C55.5,-50.1,64.6,-36.4,69.5,-21.2C74.4,-6,75.1,10.7,68.9,24.5C62.7,38.3,49.6,49.2,35.1,57.6C20.6,66,4.7,71.9,-11.9,71.4C-28.5,70.9,-45.8,64,-56.6,51.4C-67.4,38.8,-71.7,20.4,-70.7,3C-69.7,-14.4,-63.4,-30.8,-52.2,-40.1C-41,-49.4,-24.9,-51.6,-9.6,-55.3C5.7,-59,30.7,-67.1,43.1,-58.6Z" transform="translate(100 100)"/></svg>`;
-  el.innerHTML = blob('left:-90px', 'top:140px', 360, '#E9B98E', .28) + blob('right:-120px', 'top:-80px', 420, '#D9A8A0', .25) + blob('right:10%', 'bottom:-140px', 400, '#C9B08A', .3) +
-    `<div class="mandala" style="right:-150px;top:-150px">${mandalaSVG(480, '#8A5A1E', .3)}</div><div class="mandala" style="left:-170px;bottom:-170px">${mandalaSVG(540, '#8A5A1E', .25)}</div>` +
-    `<div style="position:absolute;left:46%;top:22%;opacity:.45">${lotusIcon(34, '#8A5A1E')}</div><div style="position:absolute;left:12%;top:70%;opacity:.4">${lotusIcon(26, '#8A5A1E')}</div>` +
-    `<div style="position:absolute;right:9%;top:62%;opacity:.35">${lotusIcon(30, '#8E2C3A')}</div>`;
+  el.innerHTML = `<div class="mb" style="right:-95px;top:-75px;transform:rotate(14deg)">${mbFlower(330)}</div>
+    <div class="mb" style="left:-70px;bottom:70px;transform:rotate(-14deg)">${mbFish(250)}</div>
+    <div class="mb" style="right:-55px;bottom:-70px">${mbSun(250)}</div>
+    <div class="mb" style="left:7%;top:38%;transform:rotate(8deg)">${mbFish(120)}</div>`;
 })();
 /* Part 3f: Sheets — Excel-style trackers with custom columns, shown as cards */
 
@@ -2201,7 +2225,7 @@ function profileMenuHTML() {
   const c = Cloud.status();
   return `<header class="sheet-head"><h2>${esc(S.settings.name || 'Your Sankalpa')}</h2><button class="icon-btn" data-a="closeModal" aria-label="Close">✕</button></header>
     ${c.email ? `<p class="small muted">Signed in as ${esc(c.email)}</p>` : ''}
-    <div class="pmenu">${PROFILE_PAGES.filter(p => !p[3] || featureOn(p[3])).map(p => `<a class="pm-item" href="#${p[0]}" data-a="closeModal"><span>${p[2]}</span>${p[1]}${p[0] === 'rewards' ? `<small>${Math.floor(S.rewards.balance)} min</small>` : ''}</a>`).join('')}
+    <div class="pmenu">${PROFILE_PAGES.filter(p => !p[3] || featureOn(p[3])).map(p => `<button class="pm-item" data-a="goPage" data-v="${p[0]}"><span>${p[2]}</span>${p[1]}${p[0] === 'rewards' ? `<small>${Math.floor(S.rewards.balance)} min</small>` : ''}</button>`).join('')}
       <button class="pm-item" data-a="editFeatures"><span>🧩</span>Features on / off</button>
       ${c.state === 'on' ? `<button class="pm-item" data-a="signOut"><span>👤</span>Sign out</button>` : ''}</div>`;
 }
@@ -2226,7 +2250,6 @@ function todayList() {
   return `<section class="card"><div class="card-head"><h2>Today's list</h2><span class="small muted">${done}/${total} done</span></div>
     ${total ? progressBar(total ? done / total : 0) : ''}
     ${grp('Tasks', tasks.map(taskRow)) + grp('Habits', habits) + grp('Sadhana', sad) || `<p class="muted">Nothing on today's list. Add a task with ＋ or pin a space.</p>`}
-    ${doneToday.length ? `<details><summary class="small muted">Done today (${doneToday.length})</summary><div class="list">${doneToday.map(taskRow).join('')}</div></details>` : ''}
     <div class="row"><button class="btn small" data-a="newTask">＋ Task</button><a class="btn small ghost" href="#tasks">All tasks</a></div></section>`;
 }
 function nextUp() {
@@ -2267,7 +2290,7 @@ function vToday() {
     <button class="flower-sm" data-a="editPetals" aria-label="Today's flower: ${done} of ${items.length} done. Tap to choose petals">${flowerSVG(items)}</button></section>`;
   return (S.rewards.running && featureOn('rewards') ? runningCard() : '') + head + layoutPage('today', [
     ['fest', 'Festival / vrat today', festTodayCard(), true], ['focus', 'Focus goals', focusBlock(), true],
-    ['list', 'Today\'s list', todayList()], ['next', 'Next up', nextUp()], ['coming', 'Coming up this week', comingUp()],
+    ['list', 'Today\'s list', todayList()], ['done', 'Work done', doneCard()], ['next', 'Next up', nextUp()], ['coming', 'Coming up this week', comingUp()],
     ['prio', 'This week\'s priorities', prioritiesCard()], ['intention', 'Today\'s Sankalpa', intentionCard()],
     ['body', 'Body check-in', bodyCard()], ['shloka', 'Shloka of the day', shlokaCard()]]) +
     (UI.editLayout === 'today' ? '' : `<div class="customise"><button class="link small" data-a="lEdit" data-p="today">✎ Customise this page</button></div>`);
@@ -2290,6 +2313,64 @@ function settingsExtras() {
       ${S.phase.name ? `<p><b>${esc(S.phase.emoji)} ${esc(S.phase.name)}</b>${S.phase.until ? ` · until ${fmtDate(S.phase.until)}` : ''}</p>` : '<p class="small muted">Name the season you\'re in, like “JRF year 1 + channel growth”.</p>'}</section>` : ''}
     <section class="card"><div class="card-head"><h2>🗂️ Your lists</h2></div>
       <div class="row wrap"><button class="btn small" data-a="manage" data-v="platforms">Content platforms</button><button class="btn small" data-a="manage" data-v="ventures">Startups</button><button class="btn small" data-a="manageCats">Money categories</button></div></section>`;
+}
+/* Part 3i: "Work done" — see, edit, undo or add what you did today (or on a recent day) */
+UI.doneDate = null;
+function workItems(k) {
+  const tasks = S.tasks.filter(t => t.done && t.doneAt && dkey(new Date(t.doneAt)) === k);
+  const logs = (S.worklog[k] || []);
+  const L = S.logs[k] || {}, habs = S.habits.filter(h => L.habits && L.habits[h.id]);
+  return { tasks, logs, habs };
+}
+const clock = ms => new Date(ms).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+// everything you marked as done on a day, from every part of the app — each row can be undone or edited
+function doneRows(k) {
+  const L = S.logs[k] || {}, rows = [];
+  const undo = (a, at, tip, color) => `<button class="check on" ${color ? `style="--c:${color}"` : ''} data-a="${a}" ${at} aria-label="${tip}" title="${tip}">✓</button>`;
+  const row = (at, lead, title, meta, edit) => rows.push({ at, html: `<div class="row-item">${lead}
+    <div class="grow" ${edit ? `data-a="${edit.a}" ${edit.at} role="button" tabindex="0"` : ''}><div class="title">${title}</div><div class="meta">${meta}</div></div>
+    ${edit ? `<button class="mini-btn" data-a="${edit.a}" ${edit.at}>Edit</button>` : ''}</div>` });
+  S.tasks.filter(t => t.done && t.doneAt && dkey(new Date(t.doneAt)) === k).forEach(t =>
+    row(t.doneAt, undo('toggleTask', `data-id="${t.id}"`, 'Undo: mark as not done', areaOf(t.areaId).color), esc(t.title), `${clock(t.doneAt)} · ${esc(areaOf(t.areaId).name)}${t.spent ? ` · ${t.spent} min` : ''}`, { a: 'editTask', at: `data-id="${t.id}"` }));
+  (S.worklog[k] || []).forEach(l => row(l.at, `<span class="check ghost">📝</span>`, esc(l.title), `${clock(l.at)}${l.min ? ` · ${l.min} min` : ''}${l.note ? ' · ' + esc(l.note) : ''}`, { a: 'editLog', at: `data-id="${l.id}" data-d="${k}"` }));
+  S.links.filter(l => l.done && l.doneAt && dkey(new Date(l.doneAt)) === k).forEach(l =>
+    row(l.doneAt, undo('toggleLink', `data-id="${l.id}"`, 'Undo: mark as not watched'), `${linkEmoji(l.cat)} ${esc(l.title)}`, `${clock(l.doneAt)} · watched`, { a: 'editLink', at: `data-id="${l.id}"` }));
+  S.habits.filter(h => L.habits && L.habits[h.id]).forEach(h => row(0, undo('unhabit', `data-id="${h.id}" data-d="${k}"`, 'Untick this habit', areaOf(h.areaId).color), `${h.emoji} ${esc(h.name)}`, 'Daily habit', null));
+  S.spaces.forEach(sp => sp.items.filter(it => it.freq === 'daily' && spaceVal(it, k) > 0).forEach(it => {
+    const at = `data-s="${sp.id}" data-id="${it.id}" data-d="${k}"`, v = spaceVal(it, k);
+    row(0, undo('spaceUndo', at, 'Undo', sp.color), `${sp.emoji} ${esc(it.name)}`, it.type === 'count' ? `${v}/${it.target || 1} ${esc(it.unit || '')}` : 'Done', it.type === 'count' ? { a: 'spaceEdit', at } : null);
+  }));
+  (L.exercise || []).forEach((e, i) => row(0, undo('delWorkoutDay', `data-d="${k}" data-i="${i}"`, 'Remove this workout'), `🏃 ${esc(e.type)}`, `${e.min} min`, { a: 'editWorkoutDay', at: `data-d="${k}" data-i="${i}"` }));
+  if (L.sleep) row(0, undo('delSleepDay', `data-d="${k}"`, 'Remove sleep log'), '😴 Sleep', `${L.sleep.hours} h · ${esc(L.sleep.bed)} → ${esc(L.sleep.wake)}`, { a: 'editSleepDay', at: `data-d="${k}"` });
+  if (L.water > 0) row(0, undo('waterClearDay', `data-d="${k}"`, 'Reset water to 0'), '💧 Water', `${L.water}/${S.settings.waterGoal} glasses`, { a: 'waterDay', at: `data-d="${k}"` });
+  S.fest.filter(f => f.kept && f.kept[k]).forEach(f => row(0, undo('unvrat', `data-id="${f.id}" data-d="${k}"`, 'Undo: vrat not kept'), `🪔 ${esc(f.name)}`, 'Vrat kept', null));
+  return [...rows.filter(r => r.at).sort((a, b) => a.at - b.at), ...rows.filter(r => !r.at)].map(r => r.html);
+}
+function doneCard() {
+  const k = UI.doneDate || dkey(), isToday = k === dkey(), { tasks, logs } = workItems(k), rows = doneRows(k);
+  const mins = tasks.reduce((a, t) => a + (+t.spent || 0), 0) + logs.reduce((a, l) => a + (+l.min || 0), 0), n = rows.length;
+  const label = isToday ? 'Today' : parseDate(k).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+  return `<section class="card done-card"><div class="card-head"><h2>Work done</h2>
+      <div class="row-tools"><button class="icon-btn" data-a="doneNav" data-v="-1" aria-label="Previous day">‹</button><b class="done-date">${label}</b><button class="icon-btn" data-a="doneNav" data-v="1" ${isToday ? 'disabled' : ''} aria-label="Next day">›</button></div></div>
+    <p class="small muted">${n ? `${n} thing${n === 1 ? '' : 's'} marked${mins ? ` · ${mins >= 60 ? Math.floor(mins / 60) + ' h ' + (mins % 60 ? mins % 60 + ' min' : '') : mins + ' min'} logged` : ''}. Tap ✓ to undo anything, or Edit to change it.` : (isToday ? 'Nothing marked yet today.' : 'Nothing recorded on this day.')}</p>
+    ${n ? `<div class="list">${rows.join('')}</div>` : ''}
+    <div class="row"><button class="btn small primary" data-a="logWork">＋ Log work I did</button></div></section>`;
+}
+function logForm(k, l) {
+  const isNew = !l, isToday = k === dkey(), now = new Date();
+  openForm({ title: isNew ? `Log work · ${isToday ? 'today' : fmtDate(k)}` : 'Edit work', saveLabel: isNew ? 'Add' : 'Save', fields: [
+    { k: 'title', label: 'What did you do?', value: l?.title, placeholder: 'e.g. Recorded the genetics lecture' },
+    { k: 'min', label: 'How long (minutes, optional)', type: 'number', value: l?.min ?? '' },
+    { k: 'time', label: 'At', type: 'time', value: l ? `${pad(new Date(l.at).getHours())}:${pad(new Date(l.at).getMinutes())}` : (isToday ? `${pad(now.getHours())}:${pad(now.getMinutes())}` : '12:00') },
+    { k: 'note', label: 'Note (optional)', type: 'textarea', value: l?.note }],
+    onSave: v => {
+      if (!v.title) { toast('Say what you did', '📝'); return false; }
+      const at = new Date(`${k}T${v.time || '12:00'}`).getTime(), data = { title: v.title, min: v.min === '' ? '' : +v.min, note: v.note, at };
+      S.worklog[k] = S.worklog[k] || [];
+      if (isNew) S.worklog[k].push({ id: uid(), ...data }); else Object.assign(l, data);
+      return true;
+    },
+    onDelete: isNew ? null : async () => { if (await confirmBox(`Delete “${l.title}”?`)) { S.worklog[k] = (S.worklog[k] || []).filter(x => x !== l); save(); } } });
 }
 /* Part 3b: Firebase sync, Google sign-in, push notifications.
    Each Google account has its own private planner. When sync is set up,
@@ -2500,7 +2581,7 @@ function vGate() {
            <button class="link small" data-a="emailAuth" data-v="reset">Forgot password?</button>
          </form>`
       : `<p class="muted">${st.state === 'syncing' ? 'Opening your Sankalpa…' : 'Connecting…'}</p><div class="spinner"></div>`;
-  return `<section class="gate"><div class="gate-card"><div class="gate-mandala">${mandalaSVG(150, '#B8913F', .6)}</div>
+  return `<section class="gate"><div class="gate-card"><div class="gate-mandala">${mbFlower(140)}</div>
     <span class="skt">Sankalpa</span><h1>Sankalpa</h1>${body}</div></section>`;
 }
 
@@ -2532,6 +2613,7 @@ const findBy = (arr, id) => arr.find(x => x.id === id);
 const areaOptions = () => S.areas.map(a => [a.id, `${a.emoji} ${a.name}`]);
 const PRIO_MIN = { get 1() { return ER('low'); }, get 2() { return ER('med'); }, get 3() { return ER('high'); } };
 
+const toLocalDT = ms => { const d = new Date(ms); return `${dkey(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`; };
 function shiftDeadline(s, rep) {
   const dateOnly = s.length === 10;
   let d = dateOnly ? parseDate(s) : new Date(s);
@@ -2557,10 +2639,12 @@ function taskForm(t = {}, preset = {}) {
       { k: 'remindBefore', label: 'Remind me before the deadline', type: 'checks', options: BEFORE_OPTS, value: t.remindBefore || S.settings.remindBefore },
       { k: 'remindAt', label: 'Extra reminder at a set time (optional)', type: 'datetime', value: t.remindAt },
       { k: 'repeat', label: 'Repeat', type: 'select', options: [['none', 'Does not repeat'], ['daily', 'Every day'], ['weekly', 'Every week'], ['monthly', 'Every month']], value: t.repeat || 'none' },
+      ...(t.done ? [{ k: 'doneAt', label: 'Completed at', type: 'datetime', value: toLocalDT(t.doneAt || Date.now()) }, { k: 'spent', label: 'Time spent (minutes, optional)', type: 'number', value: t.spent ?? '' }] : []),
       { k: 'notes', label: 'Notes', type: 'textarea', value: t.notes },
     ],
     onSave: v => {
       if (!v.title) { toast('Give the task a name first', '✏️'); return false; }
+      if (v.doneAt !== undefined) { v.doneAt = v.doneAt ? new Date(v.doneAt).getTime() : t.doneAt; v.spent = v.spent === '' ? '' : +v.spent; }
       v.priority = +v.priority;
       if (v.minutes === '' || v.minutes == null) v.minutes = PRIO_MIN[v.priority];
       if (v.repeat !== 'none' && !v.deadline) { toast('Repeating tasks need a deadline', '🔁'); return false; }
@@ -2864,7 +2948,7 @@ const A = {
   // quick add (＋ button)
   fab() {
     const items = [['task', '✅', 'Task'], ['water', '💧', '+1 water'], ['workout', '🏃', 'Workout'], ['sleep', '😴', 'Sleep'], ['weight', '⚖️', 'Weight'], ['link', '🔗', 'Watch later'],
-      ['idea', '💡', 'Idea'], ['content', '🎬', 'Content'], ['grocery', '🛒', 'Grocery'], ['goal', '🎯', 'Goal'], ['person', '🤝', 'Person'], ['money', '💰', 'Savings']];
+      ['idea', '💡', 'Idea'], ['content', '🎬', 'Content'], ['grocery', '🛒', 'Grocery'], ['goal', '🎯', 'Goal'], ['log', '📝', 'Log work'], ['money', '💰', 'Savings']];
     openModal(`<header class="sheet-head"><h2>Quick add</h2><button class="icon-btn" data-a="closeModal" aria-label="Close">✕</button></header>
       <div class="quick">${items.map(i => `<button data-a="quick" data-v="${i[0]}"><span>${i[1]}</span>${i[2]}</button>`).join('')}</div>`);
   },
@@ -2873,7 +2957,7 @@ const A = {
     const run = {
       task: () => taskForm(), water: () => { A.waterPlus(); toast(`${todayLog().water}/${S.settings.waterGoal} glasses today`, '💧'); },
       workout: () => A.logWorkout(), sleep: () => A.logSleep(), weight: () => A.logWeight(), goal: () => goalForm(), content: () => contentForm(),
-      person: () => personForm(), money: () => savingForm(),
+      log: () => A.logWork({}), money: () => savingForm(),
       link: () => ask('Save for later', 'Paste a link', '').then(v => { if (v) { addLinkUrl(v); } }),
       idea: () => ask('New startup idea', 'Idea', '').then(v => { if (v) { S.ideas.push({ id: uid(), title: v, note: '', status: 'New', created: Date.now() }); earn(1, 5, 'Idea: ' + v, true); toast('Idea saved', '💡'); save(); } }),
       grocery: () => { const l = S.lists.find(x => /grocer/i.test(x.name)) || S.lists[0]; if (!l) return; ask(`Add to ${l.name}`, 'Item', '').then(v => { if (v) { l.items.push({ id: uid(), text: v, done: false }); toast(`Added to ${l.name}`, l.emoji); save(); } }); },
@@ -3864,6 +3948,11 @@ const _toggleTask = A.toggleTask;
 A.toggleTask = function (d) {
   const t = findBy(S.tasks, d.id), wasDone = t && t.done;
   _toggleTask(d);
+  if (t && t.src && wasDone && !t.done && t.src.col) {
+    const sh = S.sheets.find(x => x.id === t.src.sh), r = sh && findBy(sh.rows, t.src.row), c = sh && sh.cols.find(x => x.id === t.src.col);
+    if (r && c && isDoneVal(r.c[c.id])) { r.c[c.id] = (c.options || STATUS_DEFAULT)[0]; save({ silent: true }); }
+    return;
+  }
   if (!t || !t.src || wasDone || !t.done) return;
   const sh = S.sheets.find(x => x.id === t.src.sh), r = sh && findBy(sh.rows, t.src.row); if (!r) return;
   const cols = t.src.col ? sh.cols.filter(c => c.id === t.src.col) : pendingSteps(sh, r);
@@ -3926,6 +4015,7 @@ document.addEventListener('change', e => {
 });
 /* Part 4g: actions for the simplified structure */
 Object.assign(A, {
+  goPage(d) { closeModal(); location.hash = d.v; window.scrollTo(0, 0); },
   profileMenu() { openModal(profileMenuHTML()); },
   editFeatures() { closeModal(); setTimeout(() => openModal(featuresHTML()), 200); },
   secMove(d) {
@@ -3936,4 +4026,57 @@ Object.assign(A, {
 document.addEventListener('change', e => {
   const el = e.target;
   if (el.dataset.ch === 'feature') { S.settings.features = S.settings.features || {}; S.settings.features[el.value] = el.checked; save({ silent: true }); render(); }
+});
+/* Part 4h: actions for Work done */
+Object.assign(A, {
+  doneNav(d) { const k = UI.doneDate || dkey(), n = dkey(addDays(parseDate(k), +d.v)); UI.doneDate = n >= dkey() ? null : n; render(); },
+  logWork() { logForm(UI.doneDate || dkey()); },
+  editLog(d) { const l = (S.worklog[d.d] || []).find(x => x.id === d.id); if (l) logForm(d.d, l); },
+  unhabit(d) {
+    const L = S.logs[d.d], h = findBy(S.habits, d.id); if (!L || !L.habits[d.id]) return;
+    L.habits[d.id] = false; unearn(ER('habit'), 10, 'Undid habit: ' + h.name); save();
+  },
+});
+
+// ---- undo / edit anything marked, on any day ----
+const WORKOUT_TYPES = ['Walk', 'Run', 'Gym / strength', 'Yoga', 'Cycling', 'Dance', 'Swimming', 'Sports', 'Stretching', 'Other'];
+Object.assign(A, {
+  spaceUndo(d) {
+    const sp = findBy(S.spaces, d.s), it = findBy(sp.items, d.id), pk = periodKey(it.freq, d.d), was = itemDone(it, d.d);
+    if (S.spaceLog[pk]) delete S.spaceLog[pk][it.id];
+    if (was) unearn(ER('space'), 6, 'Undid ' + it.name);
+    save();
+  },
+  spaceEdit(d) {
+    const sp = findBy(S.spaces, d.s), it = findBy(sp.items, d.id);
+    ask(it.name, `How many ${it.unit || ''} (${periodLabel(it.freq)})?`, spaceVal(it, d.d), 'number').then(v => {
+      if (v === '' || v == null) return;
+      const pk = periodKey(it.freq, d.d), was = itemDone(it, d.d); v = Math.max(0, +v);
+      S.spaceLog[pk] = S.spaceLog[pk] || {}; if (v) S.spaceLog[pk][it.id] = v; else delete S.spaceLog[pk][it.id];
+      const now = itemDone(it, d.d); if (!was && now) earn(ER('space'), 6, `${sp.emoji} ${it.name}`); else if (was && !now) unearn(ER('space'), 6, 'Undid ' + it.name);
+      save();
+    });
+  },
+  delWorkoutDay(d) { todayLog(d.d).exercise.splice(+d.i, 1); unearn(ER('workout'), 20, 'Removed workout'); save(); },
+  editWorkoutDay(d) {
+    const L = todayLog(d.d), e = L.exercise[+d.i]; if (!e) return;
+    openForm({ title: 'Edit workout', fields: [{ k: 'type', label: 'What did you do?', type: 'select', options: [...new Set([e.type, ...WORKOUT_TYPES])].map(x => [x, x]), value: e.type }, { k: 'min', label: 'Minutes', type: 'number', value: e.min }],
+      onSave: v => { if (!v.min) return false; L.exercise[+d.i] = { type: v.type, min: v.min }; return true; },
+      onDelete: () => A.delWorkoutDay(d) });
+  },
+  delSleepDay(d) { todayLog(d.d).sleep = null; unearn(ER('sleep'), 10, 'Removed sleep log'); save(); },
+  editSleepDay(d) {
+    const L = todayLog(d.d), s0 = L.sleep || {};
+    openForm({ title: 'Edit sleep', fields: [{ k: 'bed', label: 'Went to bed', type: 'time', value: s0.bed || '23:00' }, { k: 'wake', label: 'Woke up', type: 'time', value: s0.wake || '07:00' }],
+      onSave: v => { let h = (toMin(v.wake) - toMin(v.bed)) / 60; if (h <= 0) h += 24; L.sleep = { bed: v.bed, wake: v.wake, hours: Math.round(h * 10) / 10 }; return true; },
+      onDelete: () => A.delSleepDay(d) });
+  },
+  waterDay(d) {
+    const L = todayLog(d.d);
+    ask('Water', `Glasses of water (${d.d === dkey() ? 'today' : fmtDate(d.d)})`, L.water, 'number').then(v => {
+      if (v === '' || v == null) return; const b = L.water; L.water = Math.max(0, Math.round(+v)); waterReward(b, L.water); save();
+    });
+  },
+  waterClearDay(d) { const L = todayLog(d.d), b = L.water; L.water = 0; waterReward(b, 0); save(); },
+  unvrat(d) { const f = findBy(S.fest, d.id); if (!f || !f.kept) return; f.kept[d.d] = false; unearn(ER('vrat'), 20, 'Undid vrat: ' + f.name); save(); },
 });
