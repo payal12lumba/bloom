@@ -1,12 +1,12 @@
 {
-  "name": "Sankalpa — Goals, Routine & Sadhana",
+  "name": "Sankalpa — Daily Diary & Planner",
   "short_name": "Sankalpa",
-  "description": "Tasks, goals, habits, health and rewards in one calm place.",
+  "description": "Your day timeline, diary, planner, body, cycle and money in one private place.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#2B2540",
-  "theme_color": "#2B2540",
+  "background_color": "#E9ECE1",
+  "theme_color": "#E9ECE1",
   "orientation": "portrait",
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
